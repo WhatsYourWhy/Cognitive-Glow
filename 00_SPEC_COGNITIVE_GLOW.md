@@ -136,8 +136,13 @@ export interface NoteStats {
 }
 
 export interface StatsIndex {
-  version: number;
   notes: Record<string, NoteStats>; // key = path
+}
+
+export interface PersistedData {
+  version: number;
+  stats: StatsIndex;
+  settings: GlowConfig;
 }
 
 export interface GlowConfig {
@@ -153,9 +158,8 @@ export interface GlowRecord {
   glowScore: number;
 }
 
-Stored JSON shape in data.json matches StatsIndex.
-
-Config can live either in data.json or in Obsidian settings.
+Stored JSON shape in data.json matches PersistedData, with a root-level
+`version` for migrations.
 
 
 
@@ -165,7 +169,7 @@ Config can live either in data.json or in Obsidian settings.
 
 ### 6.1 On Plugin Load
 
-1. loadData() → StatsIndex (or default).
+1. loadData() → PersistedData (or defaults).
 
 
 2. Register workspace.on("file-open", onFileOpen).
@@ -381,8 +385,13 @@ interface NoteStats {
 }
 
 interface StatsIndex {
-  version: number;
   notes: Record<string, NoteStats>;
+}
+
+interface PersistedData {
+  version: number;
+  stats: StatsIndex;
+  settings: GlowConfig;
 }
 
 interface GlowConfig {
@@ -413,13 +422,33 @@ const DEFAULT_CONFIG: GlowConfig = {
 // ---- Helper Functions ----
 
 function ensureIndex(raw: unknown): StatsIndex {
-  const empty: StatsIndex = { version: CURRENT_VERSION, notes: {} };
+  const empty: StatsIndex = { notes: {} };
   if (!raw || typeof raw !== "object") return empty;
   const obj = raw as Partial<StatsIndex>;
   if (!obj.notes || typeof obj.notes !== "object") return empty;
   return {
-    version: CURRENT_VERSION,
     notes: obj.notes as Record<string, NoteStats>
+  };
+}
+
+function ensurePersistedData(
+  raw: unknown,
+  defaults: CognitiveGlowSettings
+): PersistedData {
+  const emptyStats: StatsIndex = { notes: {} };
+  if (!raw || typeof raw !== "object") {
+    return {
+      version: CURRENT_VERSION,
+      stats: emptyStats,
+      settings: { ...defaults }
+    };
+  }
+  const obj = raw as Partial<PersistedData>;
+  const statsSource = (obj.stats ?? raw) as StatsIndex;
+  return {
+    version: obj.version ?? CURRENT_VERSION,
+    stats: ensureIndex(statsSource),
+    settings: { ...defaults, ...(obj.settings ?? {}) }
   };
 }
 
@@ -476,7 +505,7 @@ const DEFAULT_SETTINGS: CognitiveGlowSettings = {
 // ---- Main Plugin Class ----
 
 export default class CognitiveGlowPlugin extends Plugin {
-  private stats: StatsIndex = { version: CURRENT_VERSION, notes: {} };
+  private stats: StatsIndex = { notes: {} };
   private settings: CognitiveGlowSettings = { ...DEFAULT_SETTINGS };
   private saveTimeout: number | null = null;
 
@@ -485,9 +514,9 @@ export default class CognitiveGlowPlugin extends Plugin {
 
     // Load stats and settings (same file for now; you can separate later)
     const raw = await this.loadData();
-    const loadedIndex = raw?.stats ?? raw; // allow future migration
-    this.stats = ensureIndex(loadedIndex);
-    this.settings = { ...DEFAULT_SETTINGS, ...(raw?.settings ?? {}) };
+    const persisted = ensurePersistedData(raw, DEFAULT_SETTINGS);
+    this.stats = persisted.stats;
+    this.settings = persisted.settings;
 
     // Listen for file open events
     this.registerEvent(
@@ -534,7 +563,8 @@ export default class CognitiveGlowPlugin extends Plugin {
 
   private async performSave() {
     this.saveTimeout = null;
-    const payload = {
+    const payload: PersistedData = {
+      version: CURRENT_VERSION,
       stats: this.stats,
       settings: this.settings
     };
