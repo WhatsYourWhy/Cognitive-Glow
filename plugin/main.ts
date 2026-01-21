@@ -51,9 +51,6 @@ export default class CognitiveGlowPlugin extends Plugin {
       (leaf: WorkspaceLeaf) =>
         new GlowView(leaf, {
           getRecords: () => this.getGlowRecords(),
-          getSettings: () => this.settings,
-          onOpenPath: (path) =>
-            this.app.workspace.openLinkText(path, "", false),
         }),
     );
 
