@@ -6,10 +6,14 @@ export const GLOW_VIEW_TYPE = "cognitive-glow-view";
 
 interface GlowViewOptions {
   getRecords: () => GlowRecord[];
+  getSettings: () => {
+    focusTopN: number;
+  };
 }
 
 export class GlowView extends ItemView {
   private options: GlowViewOptions;
+  private isFocusMode = false;
 
   constructor(leaf: WorkspaceLeaf, options: GlowViewOptions) {
     super(leaf);
@@ -33,16 +37,35 @@ export class GlowView extends ItemView {
   }
 
   render(): void {
-    const { getRecords } = this.options;
+    const { getRecords, getSettings } = this.options;
     const container = this.contentEl;
     container.empty();
 
     const header = container.createDiv({ cls: "cognitive-glow-header" });
     header.createEl("h3", { text: "Cognitive Glow" });
+    const toggleButton = header.createEl("button", {
+      cls: "cognitive-glow-toggle",
+      text: this.isFocusMode ? "Focus mode: On" : "Focus mode: Off",
+    });
+    toggleButton.addEventListener("click", () => {
+      this.isFocusMode = !this.isFocusMode;
+      this.render();
+    });
+
+    const settings = getSettings();
 
     const list = container.createDiv({ cls: "cognitive-glow-list" });
 
-    const records = getRecords().sort((a, b) => b.glowScore - a.glowScore);
+    let records = getRecords().sort((a, b) => b.glowScore - a.glowScore);
+
+    if (this.isFocusMode) {
+      const topN = Math.max(1, Math.floor(settings.focusTopN));
+      records = records.slice(0, topN);
+      header.createEl("p", {
+        cls: "cognitive-glow-mode",
+        text: `Showing top ${topN} notes by glow score.`,
+      });
+    }
 
     if (records.length === 0) {
       list.createEl("p", { text: "No glow stats yet." });
