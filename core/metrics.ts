@@ -38,7 +38,8 @@ export function computeGlowScore(
 ): number {
   // Spec 3.2: fall back to mtime when lastOpened is missing.
   const recencyAnchor = stats.lastOpened ?? fallbackMtime ?? now;
-  const recency = Math.exp(-(now - recencyAnchor) / config.tauRecencyMs);
+  const dt = Math.max(0, now - recencyAnchor);
+  const recency = Math.exp(-dt / config.tauRecencyMs);
   const denom = Math.log(1 + config.hitCountMaxScale);
   const freq = denom > 0 ? Math.log(1 + stats.hitCount) / denom : 0;
   return clamp(

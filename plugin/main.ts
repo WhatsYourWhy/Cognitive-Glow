@@ -58,10 +58,7 @@ export default class CognitiveGlowPlugin extends Plugin {
     this.registerEvent(
       this.app.workspace.on("file-open", (file) => {
         if (file instanceof TFile) {
-          const now = Date.now();
-          updateStatsOnOpen(this.stats, file, now);
-          this.scheduleSave();
-          this.refreshViews();
+          this.handleFileOpen(file);
         }
       }),
     );
@@ -135,6 +132,13 @@ export default class CognitiveGlowPlugin extends Plugin {
         active: true,
       });
     }
+    this.refreshViews();
+  }
+
+  private handleFileOpen(file: TFile): void {
+    const now = Date.now();
+    updateStatsOnOpen(this.stats, file, now);
+    this.scheduleSave();
     this.refreshViews();
   }
 
