@@ -63,10 +63,11 @@ Low = dim, small, background.
   - `mtime`: last modified time
   - `ctime`: creation time (optional, for biasing to older notes if wanted)
 
-- **Dynamic tracked by plugin**
+- **Dynamic tracked by plugin (v0.1)**
   - `hitCount`: incremented each time the note is opened
   - `lastOpened`: timestamp of last open
-  - `dwellMs` (optional v2): total ms this note was active in the visible leaf
+
+> Note: `dwellMs` is explicitly deferred to a later roadmap item and is not part of the v0.1 data model or scoring inputs.
 
 ### 3.2 Initial Glow Formula (v0.1)
 
@@ -132,7 +133,6 @@ export interface NoteStats {
   path: string;        // vault-relative path
   hitCount: number;    // number of times opened
   lastOpened: number;  // epoch ms
-  dwellMs?: number;    // optional, total active time
 }
 
 export interface StatsIndex {
