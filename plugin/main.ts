@@ -1,5 +1,6 @@
 import {
   App,
+  Modal,
   Plugin,
   PluginSettingTab,
   Setting,
@@ -64,6 +65,16 @@ export default class CognitiveGlowPlugin extends Plugin {
           .sort((a, b) => b.glowScore - a.glowScore)
           .slice(0, 20);
         console.log("Cognitive Glow – Top Notes:", records);
+      },
+    });
+
+    this.addCommand({
+      id: "cognitive-glow-show-persisted-data",
+      name: "Show Persisted Data (JSON)",
+      callback: () => {
+        const payload = this.getPersistedData();
+        const serialized = JSON.stringify(payload, null, 2);
+        new PersistedDataModal(this.app, serialized).open();
       },
     });
 
@@ -146,12 +157,35 @@ export default class CognitiveGlowPlugin extends Plugin {
 
   private async performSave(): Promise<void> {
     this.saveTimeout = null;
-    const payload: PersistedData = {
+    const payload = this.getPersistedData();
+    await saveAllStats((data) => this.saveData(data), payload);
+  }
+
+  private getPersistedData(): PersistedData {
+    return {
       version: CURRENT_VERSION,
       stats: this.stats,
       settings: this.settings,
     };
-    await saveAllStats((data) => this.saveData(data), payload);
+  }
+}
+
+class PersistedDataModal extends Modal {
+  private serializedData: string;
+
+  constructor(app: App, serializedData: string) {
+    super(app);
+    this.serializedData = serializedData;
+  }
+
+  onOpen(): void {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl("h2", {
+      text: "Cognitive Glow Persisted Data (JSON)",
+    });
+    const pre = contentEl.createEl("pre");
+    pre.textContent = this.serializedData;
   }
 }
 
