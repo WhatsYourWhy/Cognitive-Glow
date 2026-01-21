@@ -10,7 +10,6 @@ import {
 import {
   computeAllGlowRecords,
   updateStatsOnOpen,
-  type GlowConfig,
   type GlowRecord,
   type StatsIndex,
 } from "../core/metrics";
@@ -20,17 +19,11 @@ import {
   saveAllStats,
 } from "../core/store";
 import type { PersistedData } from "../core/types";
+import {
+  DEFAULT_SETTINGS,
+  type CognitiveGlowSettings,
+} from "./settings";
 import { GlowView, GLOW_VIEW_TYPE } from "../ui/glowView";
-
-interface CognitiveGlowSettings extends GlowConfig {}
-
-const DEFAULT_SETTINGS: CognitiveGlowSettings = {
-  tauRecencyMs: 3 * 24 * 60 * 60 * 1000,
-  hitCountMaxScale: 20,
-  weightRecency: 0.6,
-  weightFrequency: 0.4,
-  focusTopN: 5,
-};
 
 export default class CognitiveGlowPlugin extends Plugin {
   private stats: StatsIndex = { notes: {} };
