@@ -13,6 +13,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function isStatsIndex(value: unknown): value is StatsIndex {
+  return (
+    isRecord(value) &&
+    "notes" in value &&
+    isRecord((value as StatsIndex).notes)
+  );
+}
+
 export function ensureStatsIndex(raw: unknown): StatsIndex {
   if (!isRecord(raw)) {
     return EMPTY_STATS;
@@ -50,6 +58,17 @@ export async function loadAllStats(
   defaultSettings: GlowConfig,
 ): Promise<PersistedData> {
   const raw = await loadData();
+  if (
+    isStatsIndex(raw) &&
+    (!isRecord(raw) ||
+      (!("version" in raw) && !("stats" in raw) && !("settings" in raw)))
+  ) {
+    return {
+      version: CURRENT_VERSION,
+      stats: raw,
+      settings: { ...defaultSettings },
+    };
+  }
   return ensurePersistedData(raw, defaultSettings);
 }
 
@@ -57,5 +76,10 @@ export async function saveAllStats(
   saveData: (data: PersistedData) => Promise<void>,
   data: PersistedData,
 ): Promise<void> {
-  await saveData(data);
+  await saveData({
+    version:
+      typeof data.version === "number" ? data.version : CURRENT_VERSION,
+    stats: data.stats,
+    settings: data.settings,
+  });
 }
