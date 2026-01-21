@@ -161,9 +161,9 @@ Config can live either in data.json or in Obsidian settings.
 
 ---
 
-6. Event Flow
+## 6. Event Flow
 
-6.1 On Plugin Load
+### 6.1 On Plugin Load
 
 1. loadData() → StatsIndex (or default).
 
@@ -178,7 +178,7 @@ Config can live either in data.json or in Obsidian settings.
 
 
 
-6.2 On File Open
+### 6.2 On File Open
 
 1. If file is a TFile:
 
@@ -196,7 +196,7 @@ Schedule a debounced saveData() (e.g., once per 5 seconds max).
 
 
 
-6.3 On Render (View)
+### 6.3 On Render (View)
 
 1. Request GlowRecord[] from plugin (all notes).
 
@@ -222,9 +222,9 @@ On click: app.workspace.openLinkText(path, "", false).
 
 ---
 
-7. UI / UX
+## 7. UI / UX
 
-7.1 Sidebar View
+### 7.1 Sidebar View
 
 Appears as a new pane type: “Cognitive Glow”.
 
@@ -236,7 +236,7 @@ Later: switch to 2D grid / canvas map.
 
 
 
-7.2 Visual Encoding
+### 7.2 Visual Encoding
 
 glowScore → combination of:
 
@@ -248,7 +248,7 @@ Scale (font size or bar width)
 No color noise in v0; maybe single accent color.
 
 
-7.3 Controls
+### 7.3 Controls
 
 Toggle buttons in view header:
 
@@ -268,21 +268,21 @@ tauRecencyDays
 
 ---
 
-8. Security & Audit Story
+## 8. Security & Audit Story
 
-9. No network-layer code
+8.1 No network-layer code
 
 No fetch, WebSocket, XMLHttpRequest, or external SDKs.
 
 
 
-2. No process spawning or filesystem hacks
+8.2 No process spawning or filesystem hacks
 
 No child_process, no direct fs calls.
 
 
 
-3. Data locality
+8.3 Data locality
 
 Statistics stored exclusively in data.json under plugin directory.
 
@@ -290,7 +290,7 @@ No writes to user notes or frontmatter.
 
 
 
-4. Minimal surface area
+8.4 Minimal surface area
 
 Only integration points:
 
@@ -316,7 +316,7 @@ ui/glowView.ts
 
 ---
 
-9. Roadmap
+## 9. Roadmap
 
 v0.1 – Skeleton
 
@@ -352,7 +352,7 @@ Export/import stats.
 
 ---
 
-## 3. TypeScript Scaffold (Event Listener + Storage)
+## 10. TypeScript Scaffold (Event Listener + Storage)
 
 This is a minimal but real Obsidian plugin skeleton you can drop into `main.ts` and iterate in Cursor.
 
@@ -600,7 +600,7 @@ You can add a dedicated view next (sidebar visualization) and wire it to getGlow
 
 ---
 
-4. Advanced Ideas / Next-Level Hooks
+## 11. Advanced Ideas / Next-Level Hooks
 
 If you want some “extra” angles for portfolio cred:
 
