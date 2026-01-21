@@ -36,9 +36,8 @@ export function computeGlowScore(
   now: number,
   fallbackMtime?: number,
 ): number {
-  const lastOpenedOrMtime = stats.lastOpened ?? fallbackMtime;
   // Spec 3.2: fall back to mtime when lastOpened is missing.
-  const recencyAnchor = lastOpenedOrMtime ?? now;
+  const recencyAnchor = stats.lastOpened ?? fallbackMtime ?? now;
   const recency = Math.exp(-(now - recencyAnchor) / config.tauRecencyMs);
   const denom = Math.log(1 + config.hitCountMaxScale);
   const freq = denom > 0 ? Math.log(1 + stats.hitCount) / denom : 0;
@@ -53,9 +52,15 @@ export function computeGlowRecords(
   index: StatsIndex,
   config: GlowConfig,
   now: number,
+  fallbackMtimeForPath?: (path: string) => number | undefined,
 ): GlowRecord[] {
   return Object.values(index.notes).map((stats) => ({
     path: stats.path,
-    glowScore: computeGlowScore(stats, config, now),
+    glowScore: computeGlowScore(
+      stats,
+      config,
+      now,
+      fallbackMtimeForPath?.(stats.path),
+    ),
   }));
 }
