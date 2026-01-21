@@ -1,14 +1,9 @@
-import type { GlowConfig, NoteStats } from "./metrics";
-
-export interface StatsIndex {
-  notes: Record<string, NoteStats>;
-}
-
-export interface PersistedData {
-  version: number;
-  stats: StatsIndex;
-  settings: GlowConfig;
-}
+import type {
+  GlowConfig,
+  NoteStats,
+  PersistedData,
+  StatsIndex,
+} from "./types";
 
 export const CURRENT_VERSION = 1;
 
@@ -50,7 +45,7 @@ export function ensurePersistedData(
   };
 }
 
-export async function loadPersistedData(
+export async function loadAllStats(
   loadData: () => Promise<unknown>,
   defaultSettings: GlowConfig,
 ): Promise<PersistedData> {
@@ -58,7 +53,7 @@ export async function loadPersistedData(
   return ensurePersistedData(raw, defaultSettings);
 }
 
-export async function savePersistedData(
+export async function saveAllStats(
   saveData: (data: PersistedData) => Promise<void>,
   data: PersistedData,
 ): Promise<void> {
