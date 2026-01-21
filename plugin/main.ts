@@ -8,7 +8,7 @@ import {
 } from "obsidian";
 
 import {
-  computeGlowRecords,
+  computeAllGlowRecords,
   updateStatsOnOpen,
   type GlowConfig,
   type GlowRecord,
@@ -90,7 +90,7 @@ export default class CognitiveGlowPlugin extends Plugin {
 
   getGlowRecords(): GlowRecord[] {
     const now = Date.now();
-    return computeGlowRecords(
+    return computeAllGlowRecords(
       this.stats,
       this.settings,
       now,

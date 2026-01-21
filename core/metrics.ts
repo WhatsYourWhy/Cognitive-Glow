@@ -48,7 +48,7 @@ export function computeGlowScore(
   );
 }
 
-export function computeGlowRecords(
+export function computeAllGlowRecords(
   index: StatsIndex,
   config: GlowConfig,
   now: number,
