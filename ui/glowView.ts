@@ -73,8 +73,9 @@ export class GlowView extends ItemView {
     }
 
     records.forEach((record) => {
-      const widthPercent = Math.round(record.glowScore * 100);
-      const opacity = 0.2 + record.glowScore * 0.8;
+      const glowScore = Math.min(1, Math.max(0, record.glowScore));
+      const widthPercent = Math.round(glowScore * 100);
+      const opacity = 0.2 + glowScore * 0.8;
       const row = list.createDiv({ cls: "cognitive-glow-row" });
       row.setAttr(
         "style",
