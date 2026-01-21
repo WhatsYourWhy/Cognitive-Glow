@@ -51,6 +51,7 @@ export default class CognitiveGlowPlugin extends Plugin {
       (leaf: WorkspaceLeaf) =>
         new GlowView(leaf, {
           getRecords: () => this.getGlowRecords(),
+          getSettings: () => this.getSettings(),
         }),
     );
 
@@ -171,6 +172,18 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
     containerEl.createEl("h2", { text: "Cognitive Glow Settings" });
 
     const settings = this.plugin.getSettings();
+    const clampNumber = (
+      value: string,
+      fallback: number,
+      min = Number.NEGATIVE_INFINITY,
+      max = Number.POSITIVE_INFINITY,
+    ): number => {
+      const parsed = Number.parseFloat(value);
+      if (Number.isNaN(parsed)) {
+        return fallback;
+      }
+      return Math.min(max, Math.max(min, parsed));
+    };
 
     new Setting(containerEl)
       .setName("Focus mode top N")
@@ -183,6 +196,56 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
             const n = Number.parseInt(value, 10);
             await this.plugin.updateSettings((next) => {
               next.focusTopN = Number.isNaN(n) ? 5 : Math.max(1, n);
+            });
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName("Recency decay (ms)")
+      .setDesc("Controls how quickly glow fades with time (in milliseconds).")
+      .addText((text) =>
+        text
+          .setPlaceholder(String(settings.tauRecencyMs))
+          .setValue(String(settings.tauRecencyMs))
+          .onChange(async (value) => {
+            const nextValue = clampNumber(value, settings.tauRecencyMs, 1);
+            await this.plugin.updateSettings((next) => {
+              next.tauRecencyMs = nextValue;
+            });
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName("Recency weight")
+      .setDesc("Weight assigned to recent activity (0 to 1).")
+      .addText((text) =>
+        text
+          .setPlaceholder(String(settings.weightRecency))
+          .setValue(String(settings.weightRecency))
+          .onChange(async (value) => {
+            const nextValue = clampNumber(value, settings.weightRecency, 0, 1);
+            await this.plugin.updateSettings((next) => {
+              next.weightRecency = nextValue;
+            });
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName("Frequency weight")
+      .setDesc("Weight assigned to frequency of opens (0 to 1).")
+      .addText((text) =>
+        text
+          .setPlaceholder(String(settings.weightFrequency))
+          .setValue(String(settings.weightFrequency))
+          .onChange(async (value) => {
+            const nextValue = clampNumber(
+              value,
+              settings.weightFrequency,
+              0,
+              1,
+            );
+            await this.plugin.updateSettings((next) => {
+              next.weightFrequency = nextValue;
             });
           }),
       );
