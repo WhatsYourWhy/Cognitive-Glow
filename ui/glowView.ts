@@ -1,14 +1,15 @@
 import { ItemView, type WorkspaceLeaf } from "obsidian";
 
 import type { GlowRecord } from "../core/types";
+import type { CognitiveGlowSettings } from "../plugin/settings";
 
 export const GLOW_VIEW_TYPE = "cognitive-glow-view";
 
+const LOW_GLOW_THRESHOLD = 0.05;
+
 interface GlowViewOptions {
   getRecords: () => GlowRecord[];
-  getSettings: () => {
-    focusTopN: number;
-  };
+  getSettings: () => CognitiveGlowSettings;
 }
 
 export class GlowView extends ItemView {
@@ -76,6 +77,12 @@ export class GlowView extends ItemView {
     const list = container.createDiv({ cls: "cognitive-glow-list" });
 
     let records = getRecords().sort((a, b) => b.glowScore - a.glowScore);
+
+    if (!settings.showArchived) {
+      records = records.filter(
+        (record) => record.glowScore >= LOW_GLOW_THRESHOLD,
+      );
+    }
 
     if (this.isFocusMode) {
       const topN = Math.max(1, Math.floor(settings.focusTopN));
