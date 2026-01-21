@@ -198,6 +198,19 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("Show low-glow notes")
+      .setDesc("Include notes with very low glow scores in Normal mode.")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(settings.showArchived)
+          .onChange(async (value) => {
+            await this.plugin.updateSettings((next) => {
+              next.showArchived = value;
+            });
+          }),
+      );
+
+    new Setting(containerEl)
       .setName("Recency decay (ms)")
       .setDesc("Controls how quickly glow fades with time (in milliseconds).")
       .addText((text) =>
