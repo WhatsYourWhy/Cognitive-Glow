@@ -91,7 +91,19 @@ export default class CognitiveGlowPlugin extends Plugin {
   }
 
   getGlowRecords(): GlowRecord[] {
-    return computeGlowRecords(this.stats, this.settings, Date.now());
+    const now = Date.now();
+    return computeGlowRecords(
+      this.stats,
+      this.settings,
+      now,
+      (path) => {
+        const file = this.app.vault.getAbstractFileByPath(path);
+        if (file instanceof TFile) {
+          return file.stat.mtime;
+        }
+        return undefined;
+      },
+    );
   }
 
   getSettings(): CognitiveGlowSettings {
