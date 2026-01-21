@@ -41,18 +41,37 @@ export class GlowView extends ItemView {
     const container = this.contentEl;
     container.empty();
 
+    const settings = getSettings();
+
     const header = container.createDiv({ cls: "cognitive-glow-header" });
     header.createEl("h3", { text: "Cognitive Glow" });
-    const toggleButton = header.createEl("button", {
-      cls: "cognitive-glow-toggle",
-      text: this.isFocusMode ? "Focus mode: On" : "Focus mode: Off",
+    const modeControls = header.createDiv({
+      cls: "cognitive-glow-mode-controls",
     });
-    toggleButton.addEventListener("click", () => {
-      this.isFocusMode = !this.isFocusMode;
+    const normalButton = modeControls.createEl("button", {
+      cls: "cognitive-glow-toggle",
+      text: "Normal",
+    });
+    const focusButton = modeControls.createEl("button", {
+      cls: "cognitive-glow-toggle",
+      text: "Focus",
+    });
+    normalButton.toggleClass("is-active", !this.isFocusMode);
+    focusButton.toggleClass("is-active", this.isFocusMode);
+    normalButton.addEventListener("click", () => {
+      if (!this.isFocusMode) {
+        return;
+      }
+      this.isFocusMode = false;
       this.render();
     });
-
-    const settings = getSettings();
+    focusButton.addEventListener("click", () => {
+      if (this.isFocusMode) {
+        return;
+      }
+      this.isFocusMode = true;
+      this.render();
+    });
 
     const list = container.createDiv({ cls: "cognitive-glow-list" });
 
@@ -64,6 +83,11 @@ export class GlowView extends ItemView {
       header.createEl("p", {
         cls: "cognitive-glow-mode",
         text: `Showing top ${topN} notes by glow score.`,
+      });
+    } else {
+      header.createEl("p", {
+        cls: "cognitive-glow-mode",
+        text: "Showing all notes by glow score.",
       });
     }
 
