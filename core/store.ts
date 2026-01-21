@@ -21,6 +21,15 @@ function isStatsIndex(value: unknown): value is StatsIndex {
   );
 }
 
+function isPersistedData(value: unknown): value is PersistedData {
+  return (
+    isRecord(value) &&
+    "version" in value &&
+    "stats" in value &&
+    "settings" in value
+  );
+}
+
 export function ensureStatsIndex(raw: unknown): StatsIndex {
   if (!isRecord(raw)) {
     return EMPTY_STATS;
@@ -31,6 +40,17 @@ export function ensureStatsIndex(raw: unknown): StatsIndex {
   }
   return {
     notes: notes as Record<string, NoteStats>,
+  };
+}
+
+function migrateFromStatsIndex(
+  stats: StatsIndex,
+  defaultSettings: GlowConfig,
+): PersistedData {
+  return {
+    version: CURRENT_VERSION,
+    stats,
+    settings: { ...defaultSettings },
   };
 }
 
@@ -58,16 +78,8 @@ export async function loadAllStats(
   defaultSettings: GlowConfig,
 ): Promise<PersistedData> {
   const raw = await loadData();
-  if (
-    isStatsIndex(raw) &&
-    (!isRecord(raw) ||
-      (!("version" in raw) && !("stats" in raw) && !("settings" in raw)))
-  ) {
-    return {
-      version: CURRENT_VERSION,
-      stats: raw,
-      settings: { ...defaultSettings },
-    };
+  if (isStatsIndex(raw) && !isPersistedData(raw)) {
+    return migrateFromStatsIndex(raw, defaultSettings);
   }
   return ensurePersistedData(raw, defaultSettings);
 }
@@ -76,10 +88,11 @@ export async function saveAllStats(
   saveData: (data: PersistedData) => Promise<void>,
   data: PersistedData,
 ): Promise<void> {
-  await saveData({
+  const payload: PersistedData = {
     version:
       typeof data.version === "number" ? data.version : CURRENT_VERSION,
     stats: data.stats,
     settings: data.settings,
-  });
+  };
+  await saveData(payload);
 }
