@@ -2,6 +2,7 @@ import type { GlowConfig } from "../core/metrics";
 
 export interface CognitiveGlowSettings extends GlowConfig {
   showArchived: boolean;
+  maxRecords: number;
 }
 
 export const DEFAULT_SETTINGS: CognitiveGlowSettings = {
@@ -11,4 +12,5 @@ export const DEFAULT_SETTINGS: CognitiveGlowSettings = {
   weightFrequency: 0.4,
   focusTopN: 5,
   showArchived: true,
+  maxRecords: 3000,
 };

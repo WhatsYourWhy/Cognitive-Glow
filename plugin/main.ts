@@ -102,7 +102,7 @@ export default class CognitiveGlowPlugin extends Plugin {
 
   getGlowRecords(): GlowRecord[] {
     const now = Date.now();
-    return computeAllGlowRecords(
+    const records = computeAllGlowRecords(
       this.stats,
       this.settings,
       now,
@@ -114,6 +114,14 @@ export default class CognitiveGlowPlugin extends Plugin {
         return undefined;
       },
     );
+    const maxRecords = Math.max(0, Math.floor(this.settings.maxRecords));
+    if (maxRecords > 0 && records.length > maxRecords) {
+      return records
+        .slice()
+        .sort((a, b) => b.glowScore - a.glowScore)
+        .slice(0, maxRecords);
+    }
+    return records;
   }
 
   getSettings(): CognitiveGlowSettings {
@@ -291,6 +299,27 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
             const nextValue = clampNumber(value, settings.tauRecencyMs, 1);
             await this.plugin.updateSettings((next) => {
               next.tauRecencyMs = nextValue;
+            });
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName("Max records")
+      .setDesc(
+        "Maximum number of notes to process or render (0 disables the cap).",
+      )
+      .addText((text) =>
+        text
+          .setPlaceholder(String(settings.maxRecords))
+          .setValue(String(settings.maxRecords))
+          .onChange(async (value) => {
+            const nextValue = clampNumber(
+              value,
+              settings.maxRecords,
+              0,
+            );
+            await this.plugin.updateSettings((next) => {
+              next.maxRecords = Math.floor(nextValue);
             });
           }),
       );

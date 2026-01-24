@@ -98,6 +98,11 @@ export class GlowView extends ItemView {
       });
     }
 
+    const maxRecords = Math.max(0, Math.floor(settings.maxRecords));
+    if (maxRecords > 0) {
+      records = records.slice(0, maxRecords);
+    }
+
     if (records.length === 0) {
       list.createEl("p", { text: "No glow stats yet." });
       return;
