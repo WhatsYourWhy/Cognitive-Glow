@@ -1,9 +1,7 @@
-00_SPEC_COGNITIVE_GLOW.md
-
 ---
 title: Cognitive Glow – Obsidian Plugin Spec
 status: draft
-version: 0.1.0
+version: 0.2.0
 owner: Justin
 tags:
   - obsidian
@@ -24,6 +22,8 @@ In a large vault, especially with ADHD, notes disappear into the archive. "Out o
 **Goal:**  
 Create a **visual heatmap** of note activity that lives in an Obsidian sidebar. Notes that are **recently active and frequently opened "glow"**, while cold notes fade. The user can **navigate by visual/spatial memory** ("the bright cluster I was in yesterday") instead of remembering exact file names.
 
+This is not a productivity tracker. It is a **spatial memory aid** so that live threads stay findable without recalling exact titles.
+
 No external services. No hidden sync. Full auditability.
 
 ---
@@ -37,8 +37,8 @@ No external services. No hidden sync. Full auditability.
   - All plugin data lives in `.obsidian/plugins/cognitive-glow/data.json`.
 - **No runtime dependencies**
   - `dependencies: {}` in `package.json`.
-  - Dev-only tooling allowed (TypeScript, esbuild, etc.) but not shipped.
-- **Audit-friendly**
+  - Dev-only tooling allowed (TypeScript, bundler) but not shipped.
+- **Audit-friendly structure**
   - Clear separation of:
     - Core metrics logic
     - Persistence layer
@@ -50,104 +50,142 @@ No external services. No hidden sync. Full auditability.
 
 ---
 
-## 3. Core Concept: The Glow Score
+## 3. Core Concept: Heat vs Gravity
 
-Each note gets a **Glow Score** between 0 and 1.
+Internally, the plugin distinguishes:
 
-High = more “glow” (bigger / brighter in UI).  
-Low = dim, small, background.
+- **Heat** – how much you’ve actually been touching a note (engagement).
+- **Gravity** – how much a note “should” pull you back, even if you’re avoiding it (importance / horizon).
 
-### 3.1 Inputs to Glow Score
+In **v0.1**, only Heat is used in the math; Gravity is reserved for future use to avoid encoding “engagement = relevance” in the architecture.
+
+### 3.1 HeatScore (v0.1)
+
+Heat is derived from:
 
 - **Static from Obsidian**
   - `mtime`: last modified time
-  - `ctime`: creation time (optional, for biasing to older notes if wanted)
-
-- **Dynamic tracked by plugin (v0.1)**
+- **Dynamic tracked by plugin**
   - `hitCount`: incremented each time the note is opened
   - `lastOpened`: timestamp of last open
 
-> Note: `dwellMs` is explicitly deferred to a later roadmap item and is not part of the v0.1 data model or scoring inputs.
+### 3.2 Gravity (reserved)
 
-### 3.2 Initial Glow Formula (v0.1)
+Gravity is reserved for future versions:
 
-Let:
+- **Manual gravity:** user-assigned 0–1 importance per note (e.g., via a command or settings).
+- **Metadata-based gravity:** optional later, derived from tags or frontmatter.
+
+For now, gravity exists in the data model but does not affect the visible glow.
+
+---
+
+## 4. Glow Score Formula
+
+The **Glow Score** used for visualization is:
+
+```text
+glowScore = clamp(0, 1, wRecency * recency + wFreq * freq + wGravity * gravity)
+
+
+Where:
 
 - `recency = exp(-(now - lastOpened) / tauRecency)`
+    
 - `freq = log(1 + hitCount) / log(1 + hitCountMaxForScaling)`
-
-Then:
-
-- `glowScore = clamp(0, 1, wRecency * recency + wFreq * freq)`
-
-Weight handling:
-
-- `wRecency` and `wFreq` are clamped to 0–1.
-- If `wRecency + wFreq > 1`, the weights are normalized so their sum equals 1 (with a warning logged).
+    
+- `gravity = stats.manualGravity ?? 0` (v0.1: `wGravity = 0`)
+```
 
 Initial constants (subject to tuning):
 
 - `tauRecency`: 3 days (in ms)
+    
 - `hitCountMaxForScaling`: 20
-- `wRecency = 0.6`, `wFreq = 0.4`
+    
+- `wRecency = 0.6`, `wFreq = 0.4`, `wGravity = 0.0` (no effect yet)
+    
 
 If `lastOpened` is missing, fall back to `mtime`.
 
 ---
 
-## 4. Architecture
+## 5. Architecture
 
-### 4.1 Modules
+### 5.1 Modules
 
 1. **`core/metrics.ts`**
-   - Types: `NoteStats`, `GlowConfig`, `GlowRecord`
-   - Functions:
-     - `updateStatsOnOpen(stats, file, now)`
-     - `computeGlowScore(stats, config, now)`
-
+    
+    - Types: `NoteStats`, `GlowConfig`, `GlowRecord`
+        
+    - Functions:
+        
+        - `updateStatsOnOpen(statsIndex, file, now)`
+            
+        - `computeGlowScore(stats, config, now)`
+            
 2. **`core/store.ts`**
-   - Wraps `loadData` / `saveData`
-   - Handles schema versioning and migrations
-   - Exposes:
-     - `loadAllStats(): Promise<StatsIndex>`
-     - `saveAllStats(index: StatsIndex): Promise<void>`
-
+    
+    - Wraps `loadData` / `saveData`
+        
+    - Handles schema versioning and migrations
+        
+    - API:
+        
+        - `loadAllStats(): Promise<StatsIndex>`
+            
+        - `saveAllStats(index: StatsIndex): Promise<void>`
+            
 3. **`ui/glowView.ts`**
-   - Renders a sidebar view:
-     - Either `<canvas>` or `<div>` grid with CSS
-   - Given:
-     - `GlowRecord[]` (path + score)
-   - Handles:
-     - Rendering
-     - Click to open file
-     - Focus mode filtering
-
+    
+    - Renders a sidebar view:
+        
+        - v0.1: vertical list + bar/opacity encoding
+            
+        - v0.3+: optional Canvas / grid visualization
+            
+    - Given:
+        
+        - `GlowRecord[]` (path + score)
+            
+    - Handles:
+        
+        - Rendering
+            
+        - Click to open file
+            
+        - Focus mode filtering
+            
 4. **`plugin/main.ts`**
-   - Obsidian glue:
-     - Subscribes to `workspace.on("file-open", ...)`
-     - Schedules/deduplicates saves
-     - Registers the view (sidebar pane)
-     - Exposes settings & commands
+    
+    - Obsidian glue:
+        
+        - `workspace.on("file-open", ...)`
+            
+        - `vault.on("rename", ...)` and `vault.on("delete", ...)`
+            
+        - Schedules debounced saves
+            
+        - Registers the sidebar view
+            
+        - Exposes settings & commands
 
 ---
 
-## 5. Data Model
+## 6. Data Model
 
 ```ts
 export interface NoteStats {
-  path: string;        // vault-relative path
-  hitCount: number;    // number of times opened
-  lastOpened: number;  // epoch ms
+  path: string;           // vault-relative path
+  hitCount: number;       // number of times opened
+  lastOpened: number;     // epoch ms
+  manualGravity?: number; // 0–1 user importance, reserved for future
+  dwellMs?: number;       // optional, total active time (future)
 }
 
 export interface StatsIndex {
-  notes: Record<string, NoteStats>; // key = path
-}
-
-export interface PersistedData {
   version: number;
-  stats: StatsIndex;
-  settings: GlowConfig;
+  notes: Record<string, NoteStats>; // key = path
 }
 
 export interface GlowConfig {
@@ -155,6 +193,7 @@ export interface GlowConfig {
   hitCountMaxScale: number;
   weightRecency: number;
   weightFrequency: number;
+  weightGravity: number; // v0.1 = 0
   focusTopN: number;
 }
 
@@ -162,214 +201,255 @@ export interface GlowRecord {
   path: string;
   glowScore: number;
 }
+```
 
-Stored JSON shape in data.json matches PersistedData, with a root-level
-`version` for migrations.
+### 6.1 Rename / Delete Behavior
 
+- **Rename:** When a file is renamed, its `NoteStats` entry is migrated from the old path key to the new path key.
+    
+- **Delete:** When a file is deleted, the associated `NoteStats` entry is removed.
+    
 
-
----
-
-## 6. Event Flow
-
-### 6.1 On Plugin Load
-
-1. loadData() → PersistedData (or defaults).
-
-
-2. Register workspace.on("file-open", onFileOpen).
-
-
-3. Register a sidebar view type: COGNITIVE_GLOW_VIEW.
-
-
-4. Create / restore the view instance.
-
-
-
-### 6.2 On File Open
-
-1. If file is a TFile:
-
-Look up or create NoteStats for file.path.
-
-Increment hitCount.
-
-Set lastOpened = now.
-
-Schedule a debounced saveData() (e.g., once per 5 seconds max).
-
-
-
-2. Recompute glow scores for visible notes (not necessarily entire vault every time).
-
-
-
-### 6.3 On Render (View)
-
-1. Request GlowRecord[] from plugin (all notes).
-
-
-2. Sort descending by glowScore.
-
-
-3. Depending on mode:
-
-Normal mode: render all notes, scaled by score.
-
-Focus mode: take top focusTopN notes only.
-
-
-
-4. Each visual element:
-
-On click: app.workspace.openLinkText(path, "", false).
-
-
-
-
+This prevents silent accumulation of stats for files that no longer exist.
 
 ---
 
-## 7. UI / UX
+## 7. Event Flow
 
-### 7.1 Sidebar View
+### 7.1 On Plugin Load
 
-Appears as a new pane type: “Cognitive Glow”.
+1. `loadData()` → raw payload.
+    
+2. Extract `StatsIndex` and `GlowConfig`, applying defaults.
+    
+3. Register:
+    
+    - `workspace.on("file-open", onFileOpen)`
+        
+    - `vault.on("rename", onFileRename)`
+        
+    - `vault.on("delete", onFileDelete)`
+        
+4. Register the view type: `COGNITIVE_GLOW_VIEW` and create/restore the view.
+    
 
-At v0, simplest UI: vertical list with glow visualization:
+### 7.2 On File Open
 
-Each note: a horizontal bar whose width/opacity maps to glowScore.
+1. If `file` is a `TFile`:
+    
+    - Look up or create `NoteStats` for `file.path`.
+        
+    - Increment `hitCount`.
+        
+    - Set `lastOpened = now`.
+        
+    - Schedule a debounced save (e.g., once per 5 seconds max).
+        
+2. Recompute Glow Scores for notes as needed.
+    
 
-Later: switch to 2D grid / canvas map.
+### 7.3 On File Rename
 
+- If `oldPath` exists in `StatsIndex.notes`:
+    
+    - Move that entry to the new path key (`file.path`).
+        
 
+### 7.4 On File Delete
 
-### 7.2 Visual Encoding
+- If `file.path` exists in `StatsIndex.notes`:
+    
+    - Remove that entry.
+        
 
-glowScore → combination of:
+### 7.5 On Render (View)
 
-Opacity (0.2–1.0)
+1. Ask plugin for `GlowRecord[]`.
+    
+2. Sort descending by `glowScore`.
+    
+3. Apply mode:
+    
+    - **Normal mode:** render all records (subject to a max cap).
+        
+    - **Focus mode:** render top `focusTopN` records only.
+        
+4. Each record:
+    
+    - Click → `app.workspace.openLinkText(path, "", false)`.
+        
 
-Scale (font size or bar width)
+### 7.6 Performance Guardrail (Big Vaults)
 
-
-No color noise in v0; maybe single accent color.
-
-
-### 7.3 Controls
-
-Toggle buttons in view header:
-
-[Normal] [Focus]
-
-
-Settings in plugin options:
-
-focusTopN (default: 5)
-
-tauRecencyDays
-
-“Show archived (low-glow) notes” on/off
-
-
-
-
----
-
-## 8. Security & Audit Story
-
-8.1 No network-layer code
-
-No fetch, WebSocket, XMLHttpRequest, or external SDKs.
-
-
-
-8.2 No process spawning or filesystem hacks
-
-No child_process, no direct fs calls.
-
-
-
-8.3 Data locality
-
-Statistics stored exclusively in data.json under plugin directory.
-
-No writes to user notes or frontmatter.
-
-
-
-8.4 Minimal surface area
-
-Only integration points:
-
-workspace.on("file-open")
-
-Custom view registration
-
-Plugin settings
-
-
-
-
-
-This is explicitly reviewable by reading:
-
-main.ts
-
-core/*.ts
-
-ui/glowView.ts
-
-
+- In v0.1, GlowRecord computation is **O(N)** over seen notes.
+    
+- To avoid issues on very large vaults:
+    
+    - Optionally cap computation to the top **K** notes by `lastOpened` recency (e.g., K = 3000).
+        
+- Future optimization:
+    
+    - Cache GlowRecords and update incrementally when a single note changes.
 
 ---
 
-## 9. Roadmap
+## 8. UI / UX
 
-v0.1 – Skeleton
+### 8.1 Sidebar View (v0.1)
 
-Track hitCount and lastOpened.
+- New pane type: **“Cognitive Glow”**.
+    
+- v0.1 visualization:
+    
+    - Vertical list of notes.
+        
+    - Each note rendered as:
+        
+        - Title / basename.
+            
+        - Optional path snippet.
+            
+        - A bar whose width and/or opacity encodes `glowScore`.
+            
 
-Basic glow score.
+### 8.2 Visual Encoding
 
-Simple vertical-list sidebar.
+- `glowScore` → mapping:
+    
+    - Opacity: 0.2–1.0
+        
+    - Bar width: e.g., 20%–100%
+        
+- No multi-color heatmaps in v0.1; one accent color only.
+    
+- Changes should be **smooth but not hyperactive**; v0.1 may even use hard steps (e.g., low / medium / high glow) to avoid visual noise.
+    
 
+### 8.3 Controls
 
-v0.2 – Focus Mode
-
-Add focus mode to show top N notes.
-
-Add basic settings.
-
-
-v0.3 – Spatial Grid
-
-Switch to Canvas or CSS grid visualization.
-
-Cluster by folder or tag.
-
-
-v0.4+ – Advanced Metrics
-
-Optional dwell time tracking.
-
-Decay curves tuning.
-
-Export/import stats.
-
+- View header:
+    
+    - `[Normal] [Focus]` toggle.
+        
+- Plugin settings (CognitiveGlowSettings):
+    
+    - `tauRecencyMs` (milliseconds)
+    
+    - `hitCountMaxScale` (count)
+    
+    - `weightRecency` (0–1)
+    
+    - `weightFrequency` (0–1)
+    
+    - `focusTopN` (count)
+    
+    - `showArchived` (boolean)
+    
+    - `maxRecords` (count)
 
 ---
 
-## 10. TypeScript Scaffold (Event Listener + Storage)
+## 9. Security & Behavioral Constraints
 
-This is a minimal but real Obsidian plugin skeleton you can drop into `main.ts` and iterate in Cursor.
+### 9.1 Security
 
-It:
+1. **No network-layer code**
+    
+    - No `fetch`, `WebSocket`, `XMLHttpRequest`, or external SDKs.
+        
+2. **No process spawning or direct filesystem hacks**
+    
+    - No `child_process`, no direct `fs` usage.
+        
+3. **Data locality**
+    
+    - Statistics stored exclusively in `data.json` under plugin directory.
+        
+    - No writes to user notes or frontmatter.
+        
+4. **Minimal surface area**
+    
+    - Integration points:
+        
+        - `workspace.on("file-open")`
+            
+        - `vault.on("rename")`
+            
+        - `vault.on("delete")`
+            
+        - Custom view registration
+            
+        - Plugin settings
+            
 
-- Tracks opens via `workspace.on("file-open")`.
-- Persists stats via `loadData` / `saveData`.
-- Exposes a simple command to log current glow scores (for debugging).
+### 9.2 Behavioral Constraints
+
+To avoid turning Cognitive Glow into a tracker or shame engine:
+
+- No streaks, daily scores, or gamified metrics.
+    
+- No per-day or per-week targets.
+    
+- No urgency language (“You’re falling behind”, “Don’t miss this!”).
+    
+- No automatic _hiding_ of low-glow notes; only down-weighting / dimming.
+    
+- No aggregation or export of stats intended for performance reviews or external evaluation.
+    
+
+The plugin’s purpose is navigation and recall, not behavioral surveillance.
+
+---
+
+## 10. Roadmap
+
+### v0.1 – Skeleton (Heat only)
+
+- Track `hitCount` and `lastOpened`.
+    
+- Compute Heat-based GlowScore (with `weightGravity = 0`).
+    
+- Simple vertical-list sidebar.
+    
+- Focus mode (top N notes).
+    
+- Rename/delete handling.
+    
+
+### v0.2 – Gravity Hooks
+
+- Commands/UI to set `manualGravity` per note (0–1).
+    
+- Introduce a small `weightGravity` (e.g., 0.2–0.3) with clear UI.
+    
+- Glow tooltips explaining “why” a note glows.
+    
+
+### v0.3 – Spatial Grid
+
+- Switch/add Canvas or CSS grid visualization.
+    
+- Optional clustering by folder or tag.
+    
+
+### v0.4+ – Advanced Metrics
+
+- Optional dwell time tracking (with explicit opt-in).
+    
+- Decay curve tuning.
+    
+- Export/import stats for personal analysis.
+
+---
+
+## 11. Updated TypeScript Scaffold (with Gravity + rename/delete)
+
+Here’s an updated `main.ts` that:
+
+- Adds `manualGravity` and `weightGravity` (but keeps `weightGravity = 0`).
+- Adds vault listeners for rename/delete.
+- Leaves a clean hook for future gravity UI.
+- Keeps everything zero-network, zero-deps.
 
 ```ts
 import {
@@ -377,8 +457,8 @@ import {
   Plugin,
   PluginSettingTab,
   Setting,
-  TFile,
-  WorkspaceLeaf
+  TAbstractFile,
+  TFile
 } from "obsidian";
 
 // ---- Core Types ----
@@ -386,17 +466,13 @@ import {
 interface NoteStats {
   path: string;
   hitCount: number;
-  lastOpened: number; // epoch ms
+  lastOpened: number;      // epoch ms
+  manualGravity?: number;  // 0–1, reserved for future use
 }
 
 interface StatsIndex {
-  notes: Record<string, NoteStats>;
-}
-
-interface PersistedData {
   version: number;
-  stats: StatsIndex;
-  settings: GlowConfig;
+  notes: Record<string, NoteStats>;
 }
 
 interface GlowConfig {
@@ -404,6 +480,7 @@ interface GlowConfig {
   hitCountMaxScale: number;
   weightRecency: number;
   weightFrequency: number;
+  weightGravity: number; // v0.1 = 0
   focusTopN: number;
 }
 
@@ -414,46 +491,27 @@ interface GlowRecord {
 
 // ---- Defaults ----
 
-const CURRENT_VERSION = 1;
+const CURRENT_VERSION = 2;
 
 const DEFAULT_CONFIG: GlowConfig = {
   tauRecencyMs: 3 * 24 * 60 * 60 * 1000, // 3 days
   hitCountMaxScale: 20,
   weightRecency: 0.6,
   weightFrequency: 0.4,
+  weightGravity: 0.0, // reserved for future
   focusTopN: 5
 };
 
 // ---- Helper Functions ----
 
 function ensureIndex(raw: unknown): StatsIndex {
-  const empty: StatsIndex = { notes: {} };
+  const empty: StatsIndex = { version: CURRENT_VERSION, notes: {} };
   if (!raw || typeof raw !== "object") return empty;
   const obj = raw as Partial<StatsIndex>;
   if (!obj.notes || typeof obj.notes !== "object") return empty;
   return {
+    version: CURRENT_VERSION,
     notes: obj.notes as Record<string, NoteStats>
-  };
-}
-
-function ensurePersistedData(
-  raw: unknown,
-  defaults: CognitiveGlowSettings
-): PersistedData {
-  const emptyStats: StatsIndex = { notes: {} };
-  if (!raw || typeof raw !== "object") {
-    return {
-      version: CURRENT_VERSION,
-      stats: emptyStats,
-      settings: { ...defaults }
-    };
-  }
-  const obj = raw as Partial<PersistedData>;
-  const statsSource = (obj.stats ?? raw) as StatsIndex;
-  return {
-    version: obj.version ?? CURRENT_VERSION,
-    stats: ensureIndex(statsSource),
-    settings: { ...defaults, ...(obj.settings ?? {}) }
   };
 }
 
@@ -469,13 +527,37 @@ function updateStatsOnOpen(index: StatsIndex, file: TFile, now: number): void {
   index.notes[path] = existing;
 }
 
+function migrateStatsOnRename(
+  index: StatsIndex,
+  oldPath: string,
+  newPath: string
+): void {
+  if (oldPath === newPath) return;
+  const existing = index.notes[oldPath];
+  if (!existing) return;
+  delete index.notes[oldPath];
+  existing.path = newPath;
+  index.notes[newPath] = existing;
+}
+
+function removeStatsOnDelete(index: StatsIndex, path: string): void {
+  if (index.notes[path]) {
+    delete index.notes[path];
+  }
+}
+
 function computeGlowScore(
   stats: NoteStats,
   config: GlowConfig,
   now: number
 ): number {
-  const { tauRecencyMs, hitCountMaxScale, weightRecency, weightFrequency } =
-    config;
+  const {
+    tauRecencyMs,
+    hitCountMaxScale,
+    weightRecency,
+    weightFrequency,
+    weightGravity
+  } = config;
 
   const dt = Math.max(0, now - stats.lastOpened);
   const recency = Math.exp(-dt / tauRecencyMs);
@@ -484,7 +566,15 @@ function computeGlowScore(
   const freq =
     denom > 0 ? Math.log(1 + stats.hitCount) / denom : 0;
 
-  const score = weightRecency * recency + weightFrequency * freq;
+  const gravity = typeof stats.manualGravity === "number"
+    ? Math.max(0, Math.min(1, stats.manualGravity))
+    : 0;
+
+  const score =
+    weightRecency * recency +
+    weightFrequency * freq +
+    weightGravity * gravity;
+
   return Math.max(0, Math.min(1, score));
 }
 
@@ -493,13 +583,17 @@ function computeAllGlowRecords(
   config: GlowConfig,
   now: number
 ): GlowRecord[] {
-  return Object.values(index.notes).map((ns) => ({
-    path: ns.path,
-    glowScore: computeGlowScore(ns, config, now)
-  }));
+  const records: GlowRecord[] = [];
+
+  for (const stats of Object.values(index.notes)) {
+    const glowScore = computeGlowScore(stats, config, now);
+    records.push({ path: stats.path, glowScore });
+  }
+
+  return records;
 }
 
-// ---- Plugin Settings Wrapper (optional for later) ----
+// ---- Plugin Settings Wrapper ----
 
 interface CognitiveGlowSettings extends GlowConfig {}
 
@@ -510,20 +604,20 @@ const DEFAULT_SETTINGS: CognitiveGlowSettings = {
 // ---- Main Plugin Class ----
 
 export default class CognitiveGlowPlugin extends Plugin {
-  private stats: StatsIndex = { notes: {} };
+  private stats: StatsIndex = { version: CURRENT_VERSION, notes: {} };
   private settings: CognitiveGlowSettings = { ...DEFAULT_SETTINGS };
   private saveTimeout: number | null = null;
 
   async onload() {
     console.log("Loading Cognitive Glow plugin...");
 
-    // Load stats and settings (same file for now; you can separate later)
+    // Load stats + settings
     const raw = await this.loadData();
-    const persisted = ensurePersistedData(raw, DEFAULT_SETTINGS);
-    this.stats = persisted.stats;
-    this.settings = persisted.settings;
+    const loadedIndex = raw?.stats ?? raw;
+    this.stats = ensureIndex(loadedIndex);
+    this.settings = { ...DEFAULT_SETTINGS, ...(raw?.settings ?? {}) };
 
-    // Listen for file open events
+    // Events: file open
     this.registerEvent(
       this.app.workspace.on("file-open", (file) => {
         if (file instanceof TFile) {
@@ -534,20 +628,39 @@ export default class CognitiveGlowPlugin extends Plugin {
       })
     );
 
-    // Debug command to inspect glow scores in console
+    // Events: rename + delete
+    this.registerEvent(
+      this.app.vault.on("rename", (file: TAbstractFile, oldPath: string) => {
+        if (file instanceof TFile) {
+          migrateStatsOnRename(this.stats, oldPath, file.path);
+          this.scheduleSave();
+        }
+      })
+    );
+
+    this.registerEvent(
+      this.app.vault.on("delete", (file: TAbstractFile) => {
+        if (file instanceof TFile) {
+          removeStatsOnDelete(this.stats, file.path);
+          this.scheduleSave();
+        }
+      })
+    );
+
+    // Debug command: dump top glow scores
     this.addCommand({
       id: "cognitive-glow-dump-scores",
       name: "Dump Glow Scores to Console",
       callback: () => {
         const now = Date.now();
-        const records = computeAllGlowRecords(this.stats, this.settings, now)
+        const records = this.getGlowRecords()
           .sort((a, b) => b.glowScore - a.glowScore)
           .slice(0, 20);
         console.log("Cognitive Glow – Top Notes:", records);
       }
     });
 
-    // Settings tab (minimal for now)
+    // Settings tab
     this.addSettingTab(new CognitiveGlowSettingTab(this.app, this));
   }
 
@@ -563,23 +676,32 @@ export default class CognitiveGlowPlugin extends Plugin {
       this.performSave().catch((err) =>
         console.error("Cognitive Glow save error:", err)
       );
-    }, 5000); // save at most every 5 seconds
+    }, 5000);
   }
 
   private async performSave() {
     this.saveTimeout = null;
-    const payload: PersistedData = {
-      version: CURRENT_VERSION,
+    const payload = {
       stats: this.stats,
       settings: this.settings
     };
     await this.saveData(payload);
   }
 
-  // For future UI modules to access data:
+  // ---- Public API for UI modules ----
+
   public getGlowRecords(): GlowRecord[] {
     const now = Date.now();
-    return computeAllGlowRecords(this.stats, this.settings, now);
+    const all = computeAllGlowRecords(this.stats, this.settings, now);
+
+    // Basic perf guard: if monster index, keep the top K only
+    const K = 3000;
+    if (all.length <= K) return all;
+
+    // Sort by glowScore and trim
+    return all
+      .sort((a, b) => b.glowScore - a.glowScore)
+      .slice(0, K);
   }
 
   public getSettings(): CognitiveGlowSettings {
@@ -590,6 +712,16 @@ export default class CognitiveGlowPlugin extends Plugin {
     updater: (s: CognitiveGlowSettings) => void
   ): Promise<void> {
     updater(this.settings);
+    this.scheduleSave();
+  }
+
+  // ---- Future hook: set manual gravity for a path ----
+
+  public setManualGravity(path: string, value: number) {
+    const clamped = Math.max(0, Math.min(1, value));
+    const stats = this.stats.notes[path];
+    if (!stats) return;
+    stats.manualGravity = clamped;
     this.scheduleSave();
   }
 }
@@ -627,15 +759,29 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
             });
           })
       );
+
+    // Gravity weight is present but default 0 — you can expose later.
+    // new Setting(containerEl)
+    //   .setName("Gravity weight (experimental)")
+    //   .setDesc("How much manual importance affects the glow (0–1).")
+    //   .addText((text) =>
+    //     text
+    //       .setPlaceholder("0.0")
+    //       .setValue(String(settings.weightGravity))
+    //       .onChange(async (value) => {
+    //         const x = parseFloat(value);
+    //         await this.plugin.updateSettings((s) => {
+    //           s.weightGravity = isNaN(x) ? 0 : Math.max(0, Math.min(1, x));
+    //         });
+    //       })
+    //   );
   }
 }
-
-You can add a dedicated view next (sidebar visualization) and wire it to getGlowRecords().
-
+```
 
 ---
 
-## 11. Advanced Ideas / Next-Level Hooks
+## 12. Advanced Ideas / Next-Level Hooks
 
 If you want some “extra” angles for portfolio cred:
 
