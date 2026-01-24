@@ -5,9 +5,12 @@ import type {
   StatsIndex,
 } from "./types";
 
-export const CURRENT_VERSION = 1;
+export const CURRENT_VERSION = 2;
 
-export const EMPTY_STATS: StatsIndex = { notes: {} };
+export const EMPTY_STATS: StatsIndex = {
+  version: CURRENT_VERSION,
+  notes: {},
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -38,30 +41,38 @@ export function ensureStatsIndex(
   if (!isRecord(raw)) {
     return EMPTY_STATS;
   }
-  const notes = raw.notes;
-  if (!isRecord(notes)) {
+  const notesSource = isRecord(raw.notes) ? raw.notes : raw;
+  if (!isRecord(notesSource)) {
     return EMPTY_STATS;
   }
   const normalizedNotes: Record<string, NoteStats> = {};
-  for (const [key, value] of Object.entries(notes)) {
+  for (const [key, value] of Object.entries(notesSource)) {
     if (!isRecord(value)) {
       continue;
     }
-    const path =
-      typeof value.path === "string" ? value.path : key;
+    const path = typeof value.path === "string" ? value.path : key;
     const hitCount =
       typeof value.hitCount === "number" ? value.hitCount : 0;
     const lastOpened =
       typeof value.lastOpened === "number"
         ? value.lastOpened
         : fallbackMtimeForPath?.(path) ?? now;
+    const manualGravity =
+      typeof value.manualGravity === "number"
+        ? value.manualGravity
+        : undefined;
     normalizedNotes[path] = {
       path,
       hitCount,
       lastOpened,
+      manualGravity,
     };
   }
   return {
+    version:
+      typeof (raw as StatsIndex).version === "number"
+        ? (raw as StatsIndex).version
+        : CURRENT_VERSION,
     notes: normalizedNotes,
   };
 }

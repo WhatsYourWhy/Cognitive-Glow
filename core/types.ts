@@ -2,9 +2,11 @@ export interface NoteStats {
   path: string;
   hitCount: number;
   lastOpened: number;
+  manualGravity?: number;
 }
 
 export interface StatsIndex {
+  version: number;
   notes: Record<string, NoteStats>;
 }
 
@@ -13,7 +15,10 @@ export interface GlowConfig {
   hitCountMaxScale: number;
   weightRecency: number;
   weightFrequency: number;
+  weightGravity: number;
   focusTopN: number;
+  showArchived: boolean;
+  maxRecords: number;
 }
 
 export interface GlowRecord {

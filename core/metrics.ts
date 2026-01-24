@@ -26,6 +26,29 @@ export function updateStatsOnOpen(
   index.notes[path] = existing;
 }
 
+export function migrateStatsOnRename(
+  index: StatsIndex,
+  oldPath: string,
+  newPath: string,
+): void {
+  if (oldPath === newPath) {
+    return;
+  }
+  const existing = index.notes[oldPath];
+  if (!existing) {
+    return;
+  }
+  delete index.notes[oldPath];
+  existing.path = newPath;
+  index.notes[newPath] = existing;
+}
+
+export function removeStatsOnDelete(index: StatsIndex, path: string): void {
+  if (index.notes[path]) {
+    delete index.notes[path];
+  }
+}
+
 function clamp(min: number, max: number, value: number): number {
   return Math.min(max, Math.max(min, value));
 }
@@ -42,10 +65,16 @@ export function computeGlowScore(
   const recency = Math.exp(-dt / config.tauRecencyMs);
   const denom = Math.log(1 + config.hitCountMaxScale);
   const freq = denom > 0 ? Math.log(1 + stats.hitCount) / denom : 0;
+  const gravity =
+    typeof stats.manualGravity === "number"
+      ? clamp(0, 1, stats.manualGravity)
+      : 0;
   return clamp(
     0,
     1,
-    config.weightRecency * recency + config.weightFrequency * freq,
+    config.weightRecency * recency +
+      config.weightFrequency * freq +
+      config.weightGravity * gravity,
   );
 }
 
