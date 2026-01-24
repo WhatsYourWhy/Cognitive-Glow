@@ -35,6 +35,13 @@ export default class CognitiveGlowPlugin extends Plugin {
     const persisted = await loadAllStats(
       () => this.loadData(),
       DEFAULT_SETTINGS,
+      (path) => {
+        const file = this.app.vault.getAbstractFileByPath(path);
+        if (file instanceof TFile) {
+          return file.stat.mtime;
+        }
+        return undefined;
+      },
     );
 
     this.stats = persisted.stats;

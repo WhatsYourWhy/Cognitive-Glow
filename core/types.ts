@@ -1,7 +1,7 @@
 export interface NoteStats {
   path: string;
   hitCount: number;
-  lastOpened?: number;
+  lastOpened: number;
 }
 
 export interface StatsIndex {
