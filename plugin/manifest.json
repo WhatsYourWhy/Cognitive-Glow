@@ -3,6 +3,6 @@
   "name": "Cognitive Glow",
   "version": "0.1.0",
   "minAppVersion": "1.5.0",
-  "description": "Enhance your Obsidian workspace with cognitive glow enhancements.",
+  "description": "Note activity heatmap/glow sidebar for Obsidian.",
   "author": "Cognitive Glow"
 }
