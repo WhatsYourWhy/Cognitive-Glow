@@ -822,3 +822,12 @@ Limit how many files are included in the glow calculation (e.g., top 2–3k by r
 Prevents full-vault O(N) redraw every keystroke on monster vaults.
 
 Expose this as a configurable `maxRecords` setting so users can tune the cap.
+
+---
+
+## 13. Changelog
+
+- Clarified motivation for schema changes and lifecycle handling to keep data evolution safe and predictable.
+- Added a manual gravity concept with a default `weightGravity = 0` to keep behavior opt-in.
+- Introduced a versioned `StatsIndex` schema (version = 2) with explicit migration intent for future updates.
+- Documented the `maxRecords` performance guard and aligned settings to prevent heavy recalculation on large vaults.
