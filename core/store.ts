@@ -45,6 +45,8 @@ export function ensureStatsIndex(
   if (!isRecord(notesSource)) {
     return EMPTY_STATS;
   }
+  const version =
+    typeof raw.version === "number" ? raw.version : CURRENT_VERSION;
   const normalizedNotes: Record<string, NoteStats> = {};
   for (const [key, value] of Object.entries(notesSource)) {
     if (!isRecord(value)) {
