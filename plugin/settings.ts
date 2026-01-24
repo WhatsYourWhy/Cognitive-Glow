@@ -1,9 +1,6 @@
 import type { GlowConfig } from "../core/metrics";
 
-export interface CognitiveGlowSettings extends GlowConfig {
-  showArchived: boolean;
-  maxRecords: number;
-}
+export type CognitiveGlowSettings = GlowConfig;
 
 export const DEFAULT_SETTINGS: CognitiveGlowSettings = {
   tauRecencyMs: 3 * 24 * 60 * 60 * 1000,

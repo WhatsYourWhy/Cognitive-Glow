@@ -41,19 +41,18 @@ export function ensureStatsIndex(
   if (!isRecord(raw)) {
     return EMPTY_STATS;
   }
-  const notes = raw.notes;
-  if (!isRecord(notes)) {
+  const notesSource = isRecord(raw.notes) ? raw.notes : raw;
+  if (!isRecord(notesSource)) {
     return EMPTY_STATS;
   }
   const version =
     typeof raw.version === "number" ? raw.version : CURRENT_VERSION;
   const normalizedNotes: Record<string, NoteStats> = {};
-  for (const [key, value] of Object.entries(notes)) {
+  for (const [key, value] of Object.entries(notesSource)) {
     if (!isRecord(value)) {
       continue;
     }
-    const path =
-      typeof value.path === "string" ? value.path : key;
+    const path = typeof value.path === "string" ? value.path : key;
     const hitCount =
       typeof value.hitCount === "number" ? value.hitCount : 0;
     const lastOpened =
@@ -72,7 +71,10 @@ export function ensureStatsIndex(
     };
   }
   return {
-    version,
+    version:
+      typeof (raw as StatsIndex).version === "number"
+        ? (raw as StatsIndex).version
+        : CURRENT_VERSION,
     notes: normalizedNotes,
   };
 }

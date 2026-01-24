@@ -4,12 +4,15 @@ import {
   Plugin,
   PluginSettingTab,
   Setting,
+  TAbstractFile,
   TFile,
   type WorkspaceLeaf,
 } from "obsidian";
 
 import {
   computeAllGlowRecords,
+  migrateStatsOnRename,
+  removeStatsOnDelete,
   updateStatsOnOpen,
   type GlowRecord,
   type StatsIndex,
@@ -82,6 +85,26 @@ export default class CognitiveGlowPlugin extends Plugin {
       this.app.vault.on("delete", (file) => {
         if (file instanceof TFile) {
           this.handleFileDelete(file.path);
+        }
+      }),
+    );
+
+    this.registerEvent(
+      this.app.vault.on("rename", (file: TAbstractFile, oldPath) => {
+        if (file instanceof TFile) {
+          migrateStatsOnRename(this.stats, oldPath, file.path);
+          this.scheduleSave();
+          this.refreshViews();
+        }
+      }),
+    );
+
+    this.registerEvent(
+      this.app.vault.on("delete", (file: TAbstractFile) => {
+        if (file instanceof TFile) {
+          removeStatsOnDelete(this.stats, file.path);
+          this.scheduleSave();
+          this.refreshViews();
         }
       }),
     );
@@ -248,6 +271,16 @@ export default class CognitiveGlowPlugin extends Plugin {
     };
   }
 
+  public setManualGravity(path: string, value: number): void {
+    const record = this.stats.notes[path];
+    if (!record) {
+      return;
+    }
+    record.manualGravity = Math.min(1, Math.max(0, value));
+    this.scheduleSave();
+    this.refreshViews();
+  }
+
   private normalizeWeightSettings(
     settings: CognitiveGlowSettings,
   ): boolean {
@@ -263,7 +296,7 @@ export default class CognitiveGlowPlugin extends Plugin {
     const total = nextRecency + nextFrequency + nextGravity;
     if (total > 1) {
       console.warn(
-        "Cognitive Glow: weightRecency + weightFrequency + weightGravity exceeded 1; normalizing.",
+        "Cognitive Glow: weights exceeded 1; normalizing.",
       );
       nextRecency /= total;
       nextFrequency /= total;
@@ -418,6 +451,26 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
             );
             await this.plugin.updateSettings((next) => {
               next.weightFrequency = nextValue;
+            });
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName("Gravity weight")
+      .setDesc("Weight assigned to manual importance (0 to 1).")
+      .addText((text) =>
+        text
+          .setPlaceholder(String(settings.weightGravity))
+          .setValue(String(settings.weightGravity))
+          .onChange(async (value) => {
+            const nextValue = clampNumber(
+              value,
+              settings.weightGravity,
+              0,
+              1,
+            );
+            await this.plugin.updateSettings((next) => {
+              next.weightGravity = nextValue;
             });
           }),
       );

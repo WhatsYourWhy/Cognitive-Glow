@@ -17,6 +17,8 @@ export interface GlowConfig {
   weightFrequency: number;
   weightGravity: number;
   focusTopN: number;
+  showArchived: boolean;
+  maxRecords: number;
 }
 
 export interface GlowRecord {

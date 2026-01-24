@@ -26,6 +26,29 @@ export function updateStatsOnOpen(
   index.notes[path] = existing;
 }
 
+export function migrateStatsOnRename(
+  index: StatsIndex,
+  oldPath: string,
+  newPath: string,
+): void {
+  if (oldPath === newPath) {
+    return;
+  }
+  const existing = index.notes[oldPath];
+  if (!existing) {
+    return;
+  }
+  delete index.notes[oldPath];
+  existing.path = newPath;
+  index.notes[newPath] = existing;
+}
+
+export function removeStatsOnDelete(index: StatsIndex, path: string): void {
+  if (index.notes[path]) {
+    delete index.notes[path];
+  }
+}
+
 function clamp(min: number, max: number, value: number): number {
   return Math.min(max, Math.max(min, value));
 }
