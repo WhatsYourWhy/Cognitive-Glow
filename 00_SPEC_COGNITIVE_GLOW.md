@@ -674,3 +674,5 @@ Good portfolio story: “Here is how I expose internal state for user trust.”
 Limit how many files are included in the glow calculation (e.g., top 2–3k by recency).
 
 Prevents full-vault O(N) redraw every keystroke on monster vaults.
+
+Expose this as a configurable `maxRecords` setting so users can tune the cap.
