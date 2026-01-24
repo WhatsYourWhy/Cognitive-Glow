@@ -3,6 +3,7 @@ export interface NoteStats {
   hitCount: number;
   lastOpened: number;
   manualGravity?: number;
+  dwellMs?: number;
 }
 
 export interface StatsIndex {

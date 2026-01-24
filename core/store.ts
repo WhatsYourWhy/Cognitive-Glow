@@ -63,11 +63,14 @@ export function ensureStatsIndex(
       typeof value.manualGravity === "number"
         ? value.manualGravity
         : undefined;
+    const dwellMs =
+      typeof value.dwellMs === "number" ? value.dwellMs : undefined;
     normalizedNotes[path] = {
       path,
       hitCount,
       lastOpened,
       manualGravity,
+      dwellMs,
     };
   }
   return {

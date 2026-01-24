@@ -76,7 +76,8 @@ Gravity is reserved for future versions:
 - **Manual gravity:** user-assigned 0–1 importance per note (e.g., via a command or settings).
 - **Metadata-based gravity:** optional later, derived from tags or frontmatter.
 
-For now, gravity exists in the data model but does not affect the visible glow.
+For now, gravity exists in the data model and is exposed via the plugin API; its effect is
+still opt-in because the default `weightGravity` is `0` unless the user changes it in settings.
 
 ---
 
@@ -195,6 +196,8 @@ export interface GlowConfig {
   weightFrequency: number;
   weightGravity: number; // v0.1 = 0
   focusTopN: number;
+  showArchived: boolean;
+  maxRecords: number;
 }
 
 export interface GlowRecord {
@@ -285,7 +288,7 @@ This prevents silent accumulation of stats for files that no longer exist.
     
 - To avoid issues on very large vaults:
     
-    - Optionally cap computation to the top **K** notes by `lastOpened` recency (e.g., K = 3000).
+    - Cap the *returned* records to `maxRecords` after computing all scores.
         
 - Future optimization:
     
@@ -324,6 +327,8 @@ This prevents silent accumulation of stats for files that no longer exist.
     
 - Changes should be **smooth but not hyperactive**; v0.1 may even use hard steps (e.g., low / medium / high glow) to avoid visual noise.
     
+- **Archived/low-glow filter:** when `showArchived` is disabled, notes with `glowScore < 0.05` are filtered from Normal mode.
+
 
 ### 8.3 Controls
 
@@ -343,15 +348,16 @@ Each setting below lists units, intent, and default values as implemented.
 | `hitCountMaxScale` | count | Max hit count used to scale frequency via `log(1 + hitCount) / log(1 + hitCountMaxScale)`. | `20` |
 | `weightRecency` | 0–1 | Weight of recency term in glow score. | `0.6` |
 | `weightFrequency` | 0–1 | Weight of frequency term in glow score. | `0.4` |
-| `weightGravity` | 0–1 | Reserved weight for manual/metadata gravity; kept at zero in v0.1. | `0.0` |
+| `weightGravity` | 0–1 | Weight for manual/metadata gravity; defaults to zero in v0.1 (user can opt in). | `0.0` |
 | `focusTopN` | count | Number of top-glow notes shown in Focus mode. | `5` |
 | `showArchived` | boolean | Whether low-glow notes should be eligible for display. | `true` |
 | `maxRecords` | count | Upper bound on records returned to the UI (performance guard for large vaults). | `3000` |
 
 **Behavior notes**
 
-- `weightGravity` defaults to `0` so gravity has no effect until the feature is enabled.  
+- `weightGravity` defaults to `0` so gravity has no effect until the user opts in via settings.  
 - `maxRecords` is a performance guardrail: when the index is huge, only the top `maxRecords` glow records should be returned to the view.
+- Weight settings are clamped to `[0, 1]`; if their sum exceeds `1`, they are normalized proportionally.
 
 ---
 
