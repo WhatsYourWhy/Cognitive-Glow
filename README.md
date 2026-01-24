@@ -1,17 +1,17 @@
 # Cognitive Glow
 
-Cognitive Glow is an Obsidian plugin that renders a **note activity heatmap** inside a sidebar view. It highlights recently opened and frequently visited notes so you can navigate your vault by visual “glow” instead of hunting for filenames.
+Cognitive Glow is an Obsidian plugin that renders a note activity list in a sidebar view. It highlights recently opened and frequently visited notes so you can navigate your vault by glow scores instead of hunting for filenames.
 
-## Why it exists
+## Purpose
 
-Large vaults can bury active threads, especially when you rely on spatial memory. Cognitive Glow keeps your most active notes visible and lets quieter notes fade without hiding them.
+Cognitive Glow keeps recent and frequently opened notes visible without removing less active notes.
 
-## Highlights
+## Features
 
-- **Glow-based recall**: Notes brighten based on recency and open frequency.
-- **Focus mode**: Toggle to show only the top *N* glowing notes.
-- **Privacy-first**: No network calls, no external services, no sync.
-- **Audit-friendly**: All data lives in your vault’s plugin data file.
+- **Glow scores**: Notes brighten based on recency and open frequency.
+- **Focus mode**: Toggle to show only the top *N* notes by glow score.
+- **Local data**: No network calls or external services at runtime.
+- **Persisted stats**: Data is stored in your vault’s plugin data file.
 
 ## How it works
 
@@ -20,7 +20,7 @@ Cognitive Glow tracks:
 - **Last opened time**
 - **Open count**
 
-It calculates a glow score per note using weighted recency and frequency, then renders the list in a sidebar view. Future versions can optionally include a manual “gravity” score for importance, but it is set to **0** by default.
+It calculates a glow score per note using weighted recency and frequency, then renders the list in a sidebar view. Manual gravity values are only used when present in stored data and default to **0**.
 
 ## Installation (manual)
 
@@ -35,7 +35,7 @@ It calculates a glow score per note using weighted recency and frequency, then r
 
 ## Usage
 
-- Open the **Cognitive Glow** view from the right sidebar (it opens automatically on first load).
+- Open the **Cognitive Glow** view from the right sidebar (it opens automatically if no view is open).
 - Use **Normal** or **Focus** mode to switch between the full list and the top glowing notes.
 - Click any note to open it.
 
