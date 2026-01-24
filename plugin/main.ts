@@ -349,6 +349,27 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("Hit count max scale")
+      .setDesc(
+        "Scaling target for frequency (higher values make frequent opens matter less).",
+      )
+      .addText((text) =>
+        text
+          .setPlaceholder(String(settings.hitCountMaxScale))
+          .setValue(String(settings.hitCountMaxScale))
+          .onChange(async (value) => {
+            const nextValue = clampNumber(
+              value,
+              settings.hitCountMaxScale,
+              1,
+            );
+            await this.plugin.updateSettings((next) => {
+              next.hitCountMaxScale = Math.floor(nextValue);
+            });
+          }),
+      );
+
+    new Setting(containerEl)
       .setName("Max records")
       .setDesc(
         "Maximum number of notes to process or render (0 disables the cap).",
