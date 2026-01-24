@@ -6,7 +6,8 @@
   "scripts": {
     "build": "node esbuild.config.mjs",
     "dev": "node esbuild.config.mjs --watch",
-    "debug:glow": "node --loader ts-node/esm scripts/debug-glow-score.ts"
+    "debug:glow": "node --loader ts-node/esm scripts/debug-glow-score.ts",
+    "test": "TS_NODE_PROJECT=tsconfig.test.json TS_NODE_TRANSPILE_ONLY=1 node --test --loader ts-node/esm tests/glow-score.test.ts"
   },
   "devDependencies": {
     "esbuild": "^0.20.2",

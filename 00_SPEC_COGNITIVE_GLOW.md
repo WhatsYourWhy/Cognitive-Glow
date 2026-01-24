@@ -92,7 +92,7 @@ Where:
 
 - `recency = exp(-(now - lastOpened) / tauRecency)`
     
-- `freq = log(1 + hitCount) / log(1 + hitCountMaxForScaling)`
+- `freq = log(1 + hitCount) / log(1 + hitCountMaxScale)`
     
 - `gravity = stats.manualGravity ?? 0` (v0.1: `wGravity = 0`)
 ```
@@ -101,7 +101,7 @@ Initial constants (subject to tuning):
 
 - `tauRecency`: 3 days (in ms)
     
-- `hitCountMaxForScaling`: 20
+- `hitCountMaxScale`: 20
     
 - `wRecency = 0.6`, `wFreq = 0.4`, `wGravity = 0.0` (no effect yet)
     
@@ -345,7 +345,7 @@ Each setting below lists units, intent, and default values as implemented.
 | `weightFrequency` | 0–1 | Weight of frequency term in glow score. | `0.4` |
 | `weightGravity` | 0–1 | Reserved weight for manual/metadata gravity; kept at zero in v0.1. | `0.0` |
 | `focusTopN` | count | Number of top-glow notes shown in Focus mode. | `5` |
-| `showArchived` | boolean | Whether archived notes should be eligible for display. | `true` |
+| `showArchived` | boolean | Whether low-glow notes should be eligible for display. | `true` |
 | `maxRecords` | count | Upper bound on records returned to the UI (performance guard for large vaults). | `3000` |
 
 **Behavior notes**
