@@ -331,21 +331,27 @@ This prevents silent accumulation of stats for files that no longer exist.
     
     - `[Normal] [Focus]` toggle.
         
-- Plugin settings (CognitiveGlowSettings):
-    
-    - `tauRecencyMs` (milliseconds)
-    
-    - `hitCountMaxScale` (count)
-    
-    - `weightRecency` (0–1)
-    
-    - `weightFrequency` (0–1)
-    
-    - `focusTopN` (count)
-    
-    - `showArchived` (boolean)
-    
-    - `maxRecords` (count)
+- Plugin settings are defined in **CognitiveGlowSettings** (see §8.4).
+
+### 8.4 Settings (CognitiveGlowSettings)
+
+Each setting below lists units, intent, and default values as implemented.
+
+| Field | Units | Intent | Default |
+| --- | --- | --- | --- |
+| `tauRecencyMs` | milliseconds | Recency decay constant for `exp(-dt / tauRecencyMs)`; larger = slower fade. | `3 * 24 * 60 * 60 * 1000` (3 days) |
+| `hitCountMaxScale` | count | Max hit count used to scale frequency via `log(1 + hitCount) / log(1 + hitCountMaxScale)`. | `20` |
+| `weightRecency` | 0–1 | Weight of recency term in glow score. | `0.6` |
+| `weightFrequency` | 0–1 | Weight of frequency term in glow score. | `0.4` |
+| `weightGravity` | 0–1 | Reserved weight for manual/metadata gravity; kept at zero in v0.1. | `0.0` |
+| `focusTopN` | count | Number of top-glow notes shown in Focus mode. | `5` |
+| `showArchived` | boolean | Whether archived notes should be eligible for display. | `true` |
+| `maxRecords` | count | Upper bound on records returned to the UI (performance guard for large vaults). | `3000` |
+
+**Behavior notes**
+
+- `weightGravity` defaults to `0` so gravity has no effect until the feature is enabled.  
+- `maxRecords` is a performance guardrail: when the index is huge, only the top `maxRecords` glow records should be returned to the view.
 
 ---
 
