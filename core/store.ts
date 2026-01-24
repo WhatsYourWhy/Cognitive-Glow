@@ -30,7 +30,11 @@ function isPersistedData(value: unknown): value is PersistedData {
   );
 }
 
-export function ensureStatsIndex(raw: unknown): StatsIndex {
+export function ensureStatsIndex(
+  raw: unknown,
+  fallbackMtimeForPath?: (path: string) => number | undefined,
+  now: number = Date.now(),
+): StatsIndex {
   if (!isRecord(raw)) {
     return EMPTY_STATS;
   }
@@ -38,8 +42,27 @@ export function ensureStatsIndex(raw: unknown): StatsIndex {
   if (!isRecord(notes)) {
     return EMPTY_STATS;
   }
+  const normalizedNotes: Record<string, NoteStats> = {};
+  for (const [key, value] of Object.entries(notes)) {
+    if (!isRecord(value)) {
+      continue;
+    }
+    const path =
+      typeof value.path === "string" ? value.path : key;
+    const hitCount =
+      typeof value.hitCount === "number" ? value.hitCount : 0;
+    const lastOpened =
+      typeof value.lastOpened === "number"
+        ? value.lastOpened
+        : fallbackMtimeForPath?.(path) ?? now;
+    normalizedNotes[path] = {
+      path,
+      hitCount,
+      lastOpened,
+    };
+  }
   return {
-    notes: notes as Record<string, NoteStats>,
+    notes: normalizedNotes,
   };
 }
 
@@ -57,9 +80,15 @@ function migrateFromStatsIndex(
 export function ensurePersistedData(
   raw: unknown,
   defaultSettings: GlowConfig,
+  fallbackMtimeForPath?: (path: string) => number | undefined,
+  now: number = Date.now(),
 ): PersistedData {
   const data = isRecord(raw) ? raw : {};
-  const stats = ensureStatsIndex(data.stats ?? raw);
+  const stats = ensureStatsIndex(
+    data.stats ?? raw,
+    fallbackMtimeForPath,
+    now,
+  );
   const settings = {
     ...defaultSettings,
     ...(isRecord(data.settings) ? data.settings : {}),
@@ -76,12 +105,14 @@ export function ensurePersistedData(
 export async function loadAllStats(
   loadData: () => Promise<unknown>,
   defaultSettings: GlowConfig,
+  fallbackMtimeForPath?: (path: string) => number | undefined,
 ): Promise<PersistedData> {
   const raw = await loadData();
   if (isStatsIndex(raw) && !isPersistedData(raw)) {
-    return migrateFromStatsIndex(raw, defaultSettings);
+    const stats = ensureStatsIndex(raw, fallbackMtimeForPath);
+    return migrateFromStatsIndex(stats, defaultSettings);
   }
-  return ensurePersistedData(raw, defaultSettings);
+  return ensurePersistedData(raw, defaultSettings, fallbackMtimeForPath);
 }
 
 export async function saveAllStats(

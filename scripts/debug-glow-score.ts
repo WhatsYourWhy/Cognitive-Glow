@@ -45,10 +45,11 @@ logCase("Case 1: explicit lastOpened", {
 });
 
 logCase(
-  "Case 2: missing lastOpened uses fallback mtime",
+  "Case 2: hydrated lastOpened from fallback mtime",
   {
     path: "notes/fallback.md",
     hitCount: 1,
+    lastOpened: now - 2 * 24 * 60 * 60 * 1000,
   },
   now - 2 * 24 * 60 * 60 * 1000,
 );
