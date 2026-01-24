@@ -264,13 +264,15 @@ Toggle buttons in view header:
 [Normal] [Focus]
 
 
-Settings in plugin options:
+Settings in plugin options (CognitiveGlowSettings):
 
-focusTopN (default: 5)
-
-tauRecencyDays
-
-“Show archived (low-glow) notes” on/off
+- `tauRecencyMs` (milliseconds)
+- `hitCountMaxScale` (count)
+- `weightRecency` (0–1)
+- `weightFrequency` (0–1)
+- `focusTopN` (count)
+- `showArchived` (boolean)
+- `maxRecords` (count)
 
 
 
