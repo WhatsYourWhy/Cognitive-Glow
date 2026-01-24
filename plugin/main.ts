@@ -271,16 +271,6 @@ export default class CognitiveGlowPlugin extends Plugin {
     };
   }
 
-  public setManualGravity(path: string, value: number): void {
-    const record = this.stats.notes[path];
-    if (!record) {
-      return;
-    }
-    record.manualGravity = Math.min(1, Math.max(0, value));
-    this.scheduleSave();
-    this.refreshViews();
-  }
-
   private normalizeWeightSettings(
     settings: CognitiveGlowSettings,
   ): boolean {
