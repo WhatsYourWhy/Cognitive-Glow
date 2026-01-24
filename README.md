@@ -51,10 +51,10 @@ You can configure the glow behavior in the settings tab:
 | Setting | Description | Default |
 | --- | --- | --- |
 | Focus mode top N | Notes shown in Focus mode. | `5` |
-| Show low-glow notes | Include very low-glow notes in Normal mode. | `true` |
+| Show low-glow notes | Include very low-glow notes in Normal mode (filters glow scores below `0.05` when disabled). | `true` |
 | Recency decay (ms) | How quickly glow fades over time. | `3 days` |
 | Hit count max scale | Scaling target for frequency; higher values make frequent opens matter less. | `20` |
-| Max records | Cap records processed/rendered (0 disables). | `3000` |
+| Max records | Cap records rendered after scoring (0 disables). | `3000` |
 | Recency weight | Weight assigned to recent activity. | `0.6` |
 | Frequency weight | Weight assigned to open frequency. | `0.4` |
 | Gravity weight | Weight assigned to manual importance. | `0.0` |
