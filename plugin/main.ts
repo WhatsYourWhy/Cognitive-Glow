@@ -4,7 +4,6 @@ import {
   Plugin,
   PluginSettingTab,
   Setting,
-  TAbstractFile,
   TFile,
   type WorkspaceLeaf,
 } from "obsidian";
@@ -77,30 +76,14 @@ export default class CognitiveGlowPlugin extends Plugin {
     this.registerEvent(
       this.app.vault.on("rename", (file, oldPath) => {
         if (file instanceof TFile) {
-          this.handleFileRename(oldPath, file.path);
-        }
-      }),
-    );
-    this.registerEvent(
-      this.app.vault.on("delete", (file) => {
-        if (file instanceof TFile) {
-          this.handleFileDelete(file.path);
-        }
-      }),
-    );
-
-    this.registerEvent(
-      this.app.vault.on("rename", (file: TAbstractFile, oldPath) => {
-        if (file instanceof TFile) {
           migrateStatsOnRename(this.stats, oldPath, file.path);
           this.scheduleSave();
           this.refreshViews();
         }
       }),
     );
-
     this.registerEvent(
-      this.app.vault.on("delete", (file: TAbstractFile) => {
+      this.app.vault.on("delete", (file) => {
         if (file instanceof TFile) {
           removeStatsOnDelete(this.stats, file.path);
           this.scheduleSave();
@@ -224,30 +207,6 @@ export default class CognitiveGlowPlugin extends Plugin {
     this.refreshViews();
   }
 
-  private handleFileRename(oldPath: string, newPath: string): void {
-    if (oldPath === newPath) {
-      return;
-    }
-    const existing = this.stats.notes[oldPath];
-    if (!existing) {
-      return;
-    }
-    delete this.stats.notes[oldPath];
-    existing.path = newPath;
-    this.stats.notes[newPath] = existing;
-    this.scheduleSave();
-    this.refreshViews();
-  }
-
-  private handleFileDelete(path: string): void {
-    if (!this.stats.notes[path]) {
-      return;
-    }
-    delete this.stats.notes[path];
-    this.scheduleSave();
-    this.refreshViews();
-  }
-
   private scheduleSave(): void {
     if (this.saveTimeout != null) {
       window.clearTimeout(this.saveTimeout);
@@ -269,16 +228,6 @@ export default class CognitiveGlowPlugin extends Plugin {
       stats: this.stats,
       settings: this.settings,
     };
-  }
-
-  public setManualGravity(path: string, value: number): void {
-    const record = this.stats.notes[path];
-    if (!record) {
-      return;
-    }
-    record.manualGravity = Math.min(1, Math.max(0, value));
-    this.scheduleSave();
-    this.refreshViews();
   }
 
   private normalizeWeightSettings(

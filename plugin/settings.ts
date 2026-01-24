@@ -1,6 +1,13 @@
-import type { GlowConfig } from "../core/metrics";
-
-export type CognitiveGlowSettings = GlowConfig;
+export interface CognitiveGlowSettings {
+  tauRecencyMs: number;
+  hitCountMaxScale: number;
+  weightRecency: number;
+  weightFrequency: number;
+  weightGravity: number;
+  focusTopN: number;
+  showArchived: boolean;
+  maxRecords: number;
+}
 
 export const DEFAULT_SETTINGS: CognitiveGlowSettings = {
   tauRecencyMs: 3 * 24 * 60 * 60 * 1000,
