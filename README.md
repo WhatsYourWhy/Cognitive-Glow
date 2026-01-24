@@ -1,0 +1,88 @@
+# Cognitive Glow
+
+Cognitive Glow is an Obsidian plugin that renders a **note activity heatmap** inside a sidebar view. It highlights recently opened and frequently visited notes so you can navigate your vault by visual “glow” instead of hunting for filenames.
+
+## Why it exists
+
+Large vaults can bury active threads, especially when you rely on spatial memory. Cognitive Glow keeps your most active notes visible and lets quieter notes fade without hiding them.
+
+## Highlights
+
+- **Glow-based recall**: Notes brighten based on recency and open frequency.
+- **Focus mode**: Toggle to show only the top *N* glowing notes.
+- **Privacy-first**: No network calls, no external services, no sync.
+- **Audit-friendly**: All data lives in your vault’s plugin data file.
+
+## How it works
+
+Cognitive Glow tracks:
+
+- **Last opened time**
+- **Open count**
+
+It calculates a glow score per note using weighted recency and frequency, then renders the list in a sidebar view. Future versions can optionally include a manual “gravity” score for importance, but it is set to **0** by default.
+
+## Installation (manual)
+
+1. Clone or download this repository.
+2. Run `npm install` to install dev tooling.
+3. Run `npm run build`.
+4. Copy the following files into your vault under `.obsidian/plugins/cognitive-glow/`:
+   - `manifest.json`
+   - `main.js`
+   - `styles.css`
+5. Enable **Cognitive Glow** in Obsidian’s Community Plugins settings.
+
+## Usage
+
+- Open the **Cognitive Glow** view from the right sidebar (it opens automatically on first load).
+- Use **Normal** or **Focus** mode to switch between the full list and the top glowing notes.
+- Click any note to open it.
+
+### Commands
+
+- **Dump Glow Scores to Console**: Logs the top glowing notes to the dev console.
+- **Show Persisted Data (JSON)**: Displays the plugin’s stored data for auditing.
+
+## Settings
+
+You can configure the glow behavior in the settings tab:
+
+| Setting | Description | Default |
+| --- | --- | --- |
+| Focus mode top N | Notes shown in Focus mode. | `5` |
+| Show low-glow notes | Include very low-glow notes in Normal mode. | `true` |
+| Recency decay (ms) | How quickly glow fades over time. | `3 days` |
+| Max records | Cap records processed/rendered (0 disables). | `3000` |
+| Recency weight | Weight assigned to recent activity. | `0.6` |
+| Frequency weight | Weight assigned to open frequency. | `0.4` |
+| Gravity weight | Weight assigned to manual importance. | `0.0` |
+
+## Data storage & privacy
+
+- **No network calls** and **no external dependencies** at runtime.
+- Plugin data is stored locally in:
+  - `.obsidian/plugins/cognitive-glow/data.json`
+
+## Development
+
+```bash
+npm install
+npm run dev
+```
+
+To build for distribution:
+
+```bash
+npm run build
+```
+
+## Roadmap
+
+- **Manual gravity** controls for importance scoring.
+- **Spatial heatmap / grid view**.
+- **Explainable glow** (tooltips that explain why a note is glowing).
+
+---
+
+If you’re curious about the deeper architecture and formulae, see `00_SPEC_COGNITIVE_GLOW.md`.
