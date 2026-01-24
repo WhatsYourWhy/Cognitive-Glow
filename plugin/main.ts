@@ -27,7 +27,7 @@ import {
 import { GlowView, GLOW_VIEW_TYPE } from "../ui/glowView";
 
 export default class CognitiveGlowPlugin extends Plugin {
-  private stats: StatsIndex = { notes: {} };
+  private stats: StatsIndex = { version: CURRENT_VERSION, notes: {} };
   private settings: CognitiveGlowSettings = { ...DEFAULT_SETTINGS };
   private saveTimeout: number | null = null;
 
@@ -46,6 +46,10 @@ export default class CognitiveGlowPlugin extends Plugin {
 
     this.stats = persisted.stats;
     this.settings = persisted.settings;
+    if (this.stats.version !== CURRENT_VERSION) {
+      this.stats.version = CURRENT_VERSION;
+      this.scheduleSave();
+    }
     const normalized = this.normalizeWeightSettings(this.settings);
     if (normalized) {
       this.scheduleSave();
@@ -64,6 +68,20 @@ export default class CognitiveGlowPlugin extends Plugin {
       this.app.workspace.on("file-open", (file) => {
         if (file instanceof TFile) {
           this.handleFileOpen(file);
+        }
+      }),
+    );
+    this.registerEvent(
+      this.app.vault.on("rename", (file, oldPath) => {
+        if (file instanceof TFile) {
+          this.handleFileRename(oldPath, file.path);
+        }
+      }),
+    );
+    this.registerEvent(
+      this.app.vault.on("delete", (file) => {
+        if (file instanceof TFile) {
+          this.handleFileDelete(file.path);
         }
       }),
     );
@@ -128,6 +146,23 @@ export default class CognitiveGlowPlugin extends Plugin {
     return this.settings;
   }
 
+  setManualGravity(path: string, value: number): void {
+    if (!Number.isFinite(value)) {
+      return;
+    }
+    const clamped = Math.max(0, Math.min(1, value));
+    const now = Date.now();
+    const existing = this.stats.notes[path] ?? {
+      path,
+      hitCount: 0,
+      lastOpened: now,
+    };
+    existing.manualGravity = clamped;
+    this.stats.notes[path] = existing;
+    this.scheduleSave();
+    this.refreshViews();
+  }
+
   async updateSettings(
     updater: (settings: CognitiveGlowSettings) => void,
   ): Promise<void> {
@@ -166,6 +201,30 @@ export default class CognitiveGlowPlugin extends Plugin {
     this.refreshViews();
   }
 
+  private handleFileRename(oldPath: string, newPath: string): void {
+    if (oldPath === newPath) {
+      return;
+    }
+    const existing = this.stats.notes[oldPath];
+    if (!existing) {
+      return;
+    }
+    delete this.stats.notes[oldPath];
+    existing.path = newPath;
+    this.stats.notes[newPath] = existing;
+    this.scheduleSave();
+    this.refreshViews();
+  }
+
+  private handleFileDelete(path: string): void {
+    if (!this.stats.notes[path]) {
+      return;
+    }
+    delete this.stats.notes[path];
+    this.scheduleSave();
+    this.refreshViews();
+  }
+
   private scheduleSave(): void {
     if (this.saveTimeout != null) {
       window.clearTimeout(this.saveTimeout);
@@ -196,20 +255,24 @@ export default class CognitiveGlowPlugin extends Plugin {
       Math.min(1, Math.max(0, value));
     let nextRecency = clamp(settings.weightRecency);
     let nextFrequency = clamp(settings.weightFrequency);
+    let nextGravity = clamp(settings.weightGravity);
     let changed =
       nextRecency !== settings.weightRecency ||
-      nextFrequency !== settings.weightFrequency;
-    const total = nextRecency + nextFrequency;
+      nextFrequency !== settings.weightFrequency ||
+      nextGravity !== settings.weightGravity;
+    const total = nextRecency + nextFrequency + nextGravity;
     if (total > 1) {
       console.warn(
-        "Cognitive Glow: weightRecency + weightFrequency exceeded 1; normalizing.",
+        "Cognitive Glow: weightRecency + weightFrequency + weightGravity exceeded 1; normalizing.",
       );
       nextRecency /= total;
       nextFrequency /= total;
+      nextGravity /= total;
       changed = true;
     }
     settings.weightRecency = nextRecency;
     settings.weightFrequency = nextFrequency;
+    settings.weightGravity = nextGravity;
     return changed;
   }
 }

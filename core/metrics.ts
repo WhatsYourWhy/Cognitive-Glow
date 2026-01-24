@@ -42,10 +42,16 @@ export function computeGlowScore(
   const recency = Math.exp(-dt / config.tauRecencyMs);
   const denom = Math.log(1 + config.hitCountMaxScale);
   const freq = denom > 0 ? Math.log(1 + stats.hitCount) / denom : 0;
+  const gravity =
+    typeof stats.manualGravity === "number"
+      ? clamp(0, 1, stats.manualGravity)
+      : 0;
   return clamp(
     0,
     1,
-    config.weightRecency * recency + config.weightFrequency * freq,
+    config.weightRecency * recency +
+      config.weightFrequency * freq +
+      config.weightGravity * gravity,
   );
 }
 

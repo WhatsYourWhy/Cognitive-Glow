@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: CognitiveGlowSettings = {
   hitCountMaxScale: 20,
   weightRecency: 0.6,
   weightFrequency: 0.4,
+  weightGravity: 0,
   focusTopN: 5,
   showArchived: true,
   maxRecords: 3000,
