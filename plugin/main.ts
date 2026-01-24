@@ -46,6 +46,10 @@ export default class CognitiveGlowPlugin extends Plugin {
 
     this.stats = persisted.stats;
     this.settings = persisted.settings;
+    const normalized = this.normalizeWeightSettings(this.settings);
+    if (normalized) {
+      this.scheduleSave();
+    }
 
     this.registerView(
       GLOW_VIEW_TYPE,
@@ -120,6 +124,7 @@ export default class CognitiveGlowPlugin extends Plugin {
     updater: (settings: CognitiveGlowSettings) => void,
   ): Promise<void> {
     updater(this.settings);
+    this.normalizeWeightSettings(this.settings);
     this.scheduleSave();
     this.refreshViews();
   }
@@ -174,6 +179,30 @@ export default class CognitiveGlowPlugin extends Plugin {
       stats: this.stats,
       settings: this.settings,
     };
+  }
+
+  private normalizeWeightSettings(
+    settings: CognitiveGlowSettings,
+  ): boolean {
+    const clamp = (value: number): number =>
+      Math.min(1, Math.max(0, value));
+    let nextRecency = clamp(settings.weightRecency);
+    let nextFrequency = clamp(settings.weightFrequency);
+    let changed =
+      nextRecency !== settings.weightRecency ||
+      nextFrequency !== settings.weightFrequency;
+    const total = nextRecency + nextFrequency;
+    if (total > 1) {
+      console.warn(
+        "Cognitive Glow: weightRecency + weightFrequency exceeded 1; normalizing.",
+      );
+      nextRecency /= total;
+      nextFrequency /= total;
+      changed = true;
+    }
+    settings.weightRecency = nextRecency;
+    settings.weightFrequency = nextFrequency;
+    return changed;
   }
 }
 

@@ -80,6 +80,11 @@ Then:
 
 - `glowScore = clamp(0, 1, wRecency * recency + wFreq * freq)`
 
+Weight handling:
+
+- `wRecency` and `wFreq` are clamped to 0–1.
+- If `wRecency + wFreq > 1`, the weights are normalized so their sum equals 1 (with a warning logged).
+
 Initial constants (subject to tuning):
 
 - `tauRecency`: 3 days (in ms)
