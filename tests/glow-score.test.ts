@@ -52,7 +52,6 @@ test("computeGlowScore uses fallback mtime when lastOpened is missing", () => {
   const stats: NoteStats = {
     path: "notes/fallback.md",
     hitCount: 1,
-    lastOpened: now - 2 * 24 * 60 * 60 * 1000,
   };
   const fallbackMtime = now - 2 * 24 * 60 * 60 * 1000;
 

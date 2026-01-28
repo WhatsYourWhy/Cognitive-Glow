@@ -121,6 +121,9 @@ export default class CognitiveGlowPlugin extends Plugin {
   }
 
   onunload(): void {
+    if (this.saveTimeout != null) {
+      window.clearTimeout(this.saveTimeout);
+    }
     this.saveTimeout = null;
   }
 

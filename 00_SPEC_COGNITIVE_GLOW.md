@@ -31,7 +31,7 @@ No external services. No hidden sync. Full auditability.
 ## 2. Design Constraints
 
 - **Zero network**
-  - No `fetch`, no web sockets, no external APIs.
+  - No `fetch`, no WebSockets, no external APIs.
 - **Minimal persistence**
   - Use Obsidian’s `loadData` / `saveData` only.
   - All plugin data lives in `.obsidian/plugins/cognitive-glow/data.json`.
@@ -233,7 +233,7 @@ This prevents silent accumulation of stats for files that no longer exist.
         
     - `vault.on("delete", onFileDelete)`
         
-4. Register the view type: `COGNITIVE_GLOW_VIEW` and create/restore the view.
+4. Register the view type: `GLOW_VIEW_TYPE` (`cognitive-glow-view`) and create/restore the view.
     
 
 ### 7.2 On File Open
