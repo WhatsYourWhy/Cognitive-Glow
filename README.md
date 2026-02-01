@@ -35,9 +35,22 @@ It calculates a glow score per note using weighted recency and frequency, then r
 
 ## Usage
 
-- Open the **Cognitive Glow** view from the right sidebar (it opens automatically if no view is open).
+- Open the **Cognitive Glow** view from the right sidebar (it opens automatically on startup if a view is not already open).
 - Use **Normal** or **Focus** mode to switch between the full list and the top glowing notes.
 - Click any note to open it.
+
+### Usage example
+
+1. Open a few notes to generate activity data.
+2. Use the command palette to run **Cognitive Glow: Dump Glow Scores to Console**.
+3. In the developer console you will see a list like:
+
+```
+[
+  { path: "Notes/Project.md", glowScore: 0.73 },
+  { path: "Daily/2024-06-01.md", glowScore: 0.51 }
+]
+```
 
 ### Commands
 

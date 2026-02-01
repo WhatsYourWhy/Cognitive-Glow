@@ -63,11 +63,11 @@ In **v0.1**, only Heat is used in the math; Gravity is reserved for future use t
 
 Heat is derived from:
 
-- **Static from Obsidian**
-  - `mtime`: last modified time
 - **Dynamic tracked by plugin**
   - `hitCount`: incremented each time the note is opened
   - `lastOpened`: timestamp of last open
+- **Fallback only**
+  - `mtime`: used only if `lastOpened` is missing when loading data
 
 ### 3.2 Gravity (reserved)
 
@@ -133,9 +133,9 @@ If `lastOpened` is missing, fall back to `mtime`.
         
     - API:
         
-        - `loadAllStats(): Promise<StatsIndex>`
+        - `loadAllStats(): Promise<PersistedData>`
             
-        - `saveAllStats(index: StatsIndex): Promise<void>`
+        - `saveAllStats(data: PersistedData): Promise<void>`
             
 3. **`ui/glowView.ts`**
     
@@ -308,11 +308,9 @@ This prevents silent accumulation of stats for files that no longer exist.
         
     - Each note rendered as:
         
-        - Title / basename.
+        - Vault-relative path text.
             
-        - Optional path snippet.
-            
-        - A bar whose width and/or opacity encodes `glowScore`.
+        - A bar whose width and opacity encode `glowScore`.
             
 
 ### 8.2 Visual Encoding
@@ -321,7 +319,7 @@ This prevents silent accumulation of stats for files that no longer exist.
     
     - Opacity: 0.2–1.0
         
-    - Bar width: e.g., 20%–100%
+    - Bar width: 0%–100%
         
 - No multi-color heatmaps in v0.1; one accent color only.
     
@@ -404,7 +402,7 @@ To avoid turning Cognitive Glow into a tracker or shame engine:
     
 - No urgency language (“You’re falling behind”, “Don’t miss this!”).
     
-- No automatic _hiding_ of low-glow notes; only down-weighting / dimming.
+- No automatic _hiding_ of low-glow notes by default; optional filtering is available via settings.
     
 - No aggregation or export of stats intended for performance reviews or external evaluation.
     
