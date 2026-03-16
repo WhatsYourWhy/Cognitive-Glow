@@ -201,7 +201,7 @@ var GlowView = class extends import_obsidian.ItemView {
     return GLOW_VIEW_TYPE;
   }
   getDisplayText() {
-    return "Cognitive Glow";
+    return "Cognitive glow";
   }
   onOpen() {
     this.render();
@@ -215,7 +215,7 @@ var GlowView = class extends import_obsidian.ItemView {
     container.empty();
     const settings = getSettings();
     const header = container.createDiv({ cls: "cognitive-glow-header" });
-    header.createEl("h3", { text: "Cognitive Glow" });
+    header.createEl("h3", { text: "Cognitive glow" });
     const modeControls = header.createDiv({
       cls: "cognitive-glow-mode-controls"
     });
@@ -502,7 +502,7 @@ var PersistedDataModal = class extends import_obsidian2.Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.createEl("h2", {
-      text: "Cognitive Glow persisted data (JSON)"
+      text: "Cognitive glow persisted data (JSON)"
     });
     const pre = contentEl.createEl("pre");
     pre.textContent = this.serializedData;
@@ -516,7 +516,7 @@ var CognitiveGlowSettingTab = class extends import_obsidian2.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    new import_obsidian2.Setting(containerEl).setName("Cognitive Glow settings").setHeading();
+    new import_obsidian2.Setting(containerEl).setName("Configuration").setHeading();
     const settings = this.plugin.getSettings();
     const clampNumber = (value, fallback, min = Number.NEGATIVE_INFINITY, max = Number.POSITIVE_INFINITY) => {
       const parsed = Number.parseFloat(value);

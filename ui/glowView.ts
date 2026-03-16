@@ -26,7 +26,7 @@ export class GlowView extends ItemView {
   }
 
   getDisplayText(): string {
-    return "Cognitive Glow";
+    return "Cognitive glow";
   }
 
   onOpen(): void {
@@ -45,7 +45,7 @@ export class GlowView extends ItemView {
     const settings = getSettings();
 
     const header = container.createDiv({ cls: "cognitive-glow-header" });
-    header.createEl("h3", { text: "Cognitive Glow" });
+    header.createEl("h3", { text: "Cognitive glow" });
     const modeControls = header.createDiv({
       cls: "cognitive-glow-mode-controls",
     });

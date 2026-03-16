@@ -274,7 +274,7 @@ class PersistedDataModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.createEl("h2", {
-      text: "Cognitive Glow persisted data (JSON)",
+      text: "Cognitive glow persisted data (JSON)",
     });
     const pre = contentEl.createEl("pre");
     pre.textContent = this.serializedData;
@@ -292,7 +292,7 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    new Setting(containerEl).setName("Cognitive Glow settings").setHeading();
+    new Setting(containerEl).setName("Configuration").setHeading();
 
     const settings = this.plugin.getSettings();
     const clampNumber = (
