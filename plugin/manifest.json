@@ -3,6 +3,6 @@
   "name": "Cognitive Glow",
   "version": "0.1.0",
   "minAppVersion": "1.5.0",
-  "description": "Note activity heatmap/glow sidebar for Obsidian.",
-  "author": "Cognitive Glow"
+  "description": "Note activity heatmap/glow sidebar — navigate your vault by visual glow instead of hunting filenames.",
+  "author": "Justin Shank"
 }
