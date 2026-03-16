@@ -10,7 +10,7 @@
     "test": "TS_NODE_PROJECT=tsconfig.test.json TS_NODE_TRANSPILE_ONLY=1 node --test --loader ts-node/esm tests/glow-score.test.ts"
   },
   "devDependencies": {
-    "esbuild": "^0.20.2",
+    "esbuild": "^0.27.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   }
