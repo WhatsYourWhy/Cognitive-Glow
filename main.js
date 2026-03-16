@@ -128,7 +128,7 @@ function ensureStatsIndex(raw, fallbackMtimeForPath, now = Date.now()) {
     };
   }
   return {
-    version: typeof raw.version === "number" ? raw.version : CURRENT_VERSION,
+    version,
     notes: normalizedNotes
   };
 }
@@ -353,16 +353,16 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
       })
     );
     this.addCommand({
-      id: "cognitive-glow-dump-scores",
-      name: "Dump Glow Scores to Console",
+      id: "dump-scores",
+      name: "Dump glow scores to console",
       callback: () => {
         const records = this.getGlowRecords().sort((a, b) => b.glowScore - a.glowScore).slice(0, 20);
-        console.log("Cognitive Glow \u2013 Top Notes:", records);
+        console.debug("Cognitive Glow \u2013 Top Notes:", records);
       }
     });
     this.addCommand({
-      id: "cognitive-glow-show-persisted-data",
-      name: "Show Persisted Data (JSON)",
+      id: "show-persisted-data",
+      name: "Show persisted data (JSON)",
       callback: () => {
         const payload = this.getPersistedData();
         const serialized = JSON.stringify(payload, null, 2);
@@ -420,7 +420,7 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
     this.scheduleSave();
     this.refreshViews();
   }
-  async updateSettings(updater) {
+  updateSettings(updater) {
     updater(this.settings);
     this.normalizeWeightSettings(this.settings);
     this.scheduleSave();
@@ -502,7 +502,7 @@ var PersistedDataModal = class extends import_obsidian2.Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.createEl("h2", {
-      text: "Cognitive Glow Persisted Data (JSON)"
+      text: "Cognitive Glow persisted data (JSON)"
     });
     const pre = contentEl.createEl("pre");
     pre.textContent = this.serializedData;
@@ -516,7 +516,7 @@ var CognitiveGlowSettingTab = class extends import_obsidian2.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "Cognitive Glow Settings" });
+    new import_obsidian2.Setting(containerEl).setName("Cognitive Glow settings").setHeading();
     const settings = this.plugin.getSettings();
     const clampNumber = (value, fallback, min = Number.NEGATIVE_INFINITY, max = Number.POSITIVE_INFINITY) => {
       const parsed = Number.parseFloat(value);
@@ -525,25 +525,25 @@ var CognitiveGlowSettingTab = class extends import_obsidian2.PluginSettingTab {
       }
       return Math.min(max, Math.max(min, parsed));
     };
-    new import_obsidian2.Setting(containerEl).setName("Focus mode top N").setDesc("Number of notes to show in Focus Mode.").addText(
-      (text) => text.setPlaceholder("5").setValue(String(settings.focusTopN)).onChange(async (value) => {
+    new import_obsidian2.Setting(containerEl).setName("Focus mode top n").setDesc("Number of notes to show in focus mode.").addText(
+      (text) => text.setPlaceholder("5").setValue(String(settings.focusTopN)).onChange((value) => {
         const n = Number.parseInt(value, 10);
-        await this.plugin.updateSettings((next) => {
+        this.plugin.updateSettings((next) => {
           next.focusTopN = Number.isNaN(n) ? 5 : Math.max(1, n);
         });
       })
     );
-    new import_obsidian2.Setting(containerEl).setName("Show low-glow notes").setDesc("Include notes with very low glow scores in Normal mode.").addToggle(
-      (toggle) => toggle.setValue(settings.showArchived).onChange(async (value) => {
-        await this.plugin.updateSettings((next) => {
+    new import_obsidian2.Setting(containerEl).setName("Show low-glow notes").setDesc("Include notes with very low glow scores in normal mode.").addToggle(
+      (toggle) => toggle.setValue(settings.showArchived).onChange((value) => {
+        this.plugin.updateSettings((next) => {
           next.showArchived = value;
         });
       })
     );
     new import_obsidian2.Setting(containerEl).setName("Recency decay (ms)").setDesc("Controls how quickly glow fades with time (in milliseconds).").addText(
-      (text) => text.setPlaceholder(String(settings.tauRecencyMs)).setValue(String(settings.tauRecencyMs)).onChange(async (value) => {
+      (text) => text.setPlaceholder(String(settings.tauRecencyMs)).setValue(String(settings.tauRecencyMs)).onChange((value) => {
         const nextValue = clampNumber(value, settings.tauRecencyMs, 1);
-        await this.plugin.updateSettings((next) => {
+        this.plugin.updateSettings((next) => {
           next.tauRecencyMs = nextValue;
         });
       })
@@ -551,13 +551,13 @@ var CognitiveGlowSettingTab = class extends import_obsidian2.PluginSettingTab {
     new import_obsidian2.Setting(containerEl).setName("Hit count max scale").setDesc(
       "Scaling target for frequency (higher values make frequent opens matter less)."
     ).addText(
-      (text) => text.setPlaceholder(String(settings.hitCountMaxScale)).setValue(String(settings.hitCountMaxScale)).onChange(async (value) => {
+      (text) => text.setPlaceholder(String(settings.hitCountMaxScale)).setValue(String(settings.hitCountMaxScale)).onChange((value) => {
         const nextValue = clampNumber(
           value,
           settings.hitCountMaxScale,
           1
         );
-        await this.plugin.updateSettings((next) => {
+        this.plugin.updateSettings((next) => {
           next.hitCountMaxScale = Math.floor(nextValue);
         });
       })
@@ -565,47 +565,47 @@ var CognitiveGlowSettingTab = class extends import_obsidian2.PluginSettingTab {
     new import_obsidian2.Setting(containerEl).setName("Max records").setDesc(
       "Maximum number of notes to process or render (0 disables the cap)."
     ).addText(
-      (text) => text.setPlaceholder(String(settings.maxRecords)).setValue(String(settings.maxRecords)).onChange(async (value) => {
+      (text) => text.setPlaceholder(String(settings.maxRecords)).setValue(String(settings.maxRecords)).onChange((value) => {
         const nextValue = clampNumber(
           value,
           settings.maxRecords,
           0
         );
-        await this.plugin.updateSettings((next) => {
+        this.plugin.updateSettings((next) => {
           next.maxRecords = Math.floor(nextValue);
         });
       })
     );
     new import_obsidian2.Setting(containerEl).setName("Recency weight").setDesc("Weight assigned to recent activity (0 to 1).").addText(
-      (text) => text.setPlaceholder(String(settings.weightRecency)).setValue(String(settings.weightRecency)).onChange(async (value) => {
+      (text) => text.setPlaceholder(String(settings.weightRecency)).setValue(String(settings.weightRecency)).onChange((value) => {
         const nextValue = clampNumber(value, settings.weightRecency, 0, 1);
-        await this.plugin.updateSettings((next) => {
+        this.plugin.updateSettings((next) => {
           next.weightRecency = nextValue;
         });
       })
     );
     new import_obsidian2.Setting(containerEl).setName("Frequency weight").setDesc("Weight assigned to frequency of opens (0 to 1).").addText(
-      (text) => text.setPlaceholder(String(settings.weightFrequency)).setValue(String(settings.weightFrequency)).onChange(async (value) => {
+      (text) => text.setPlaceholder(String(settings.weightFrequency)).setValue(String(settings.weightFrequency)).onChange((value) => {
         const nextValue = clampNumber(
           value,
           settings.weightFrequency,
           0,
           1
         );
-        await this.plugin.updateSettings((next) => {
+        this.plugin.updateSettings((next) => {
           next.weightFrequency = nextValue;
         });
       })
     );
     new import_obsidian2.Setting(containerEl).setName("Gravity weight").setDesc("Weight assigned to manual importance (0 to 1).").addText(
-      (text) => text.setPlaceholder(String(settings.weightGravity)).setValue(String(settings.weightGravity)).onChange(async (value) => {
+      (text) => text.setPlaceholder(String(settings.weightGravity)).setValue(String(settings.weightGravity)).onChange((value) => {
         const nextValue = clampNumber(
           value,
           settings.weightGravity,
           0,
           1
         );
-        await this.plugin.updateSettings((next) => {
+        this.plugin.updateSettings((next) => {
           next.weightGravity = nextValue;
         });
       })

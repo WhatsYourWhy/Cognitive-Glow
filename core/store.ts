@@ -74,10 +74,7 @@ export function ensureStatsIndex(
     };
   }
   return {
-    version:
-      typeof (raw as StatsIndex).version === "number"
-        ? (raw as StatsIndex).version
-        : CURRENT_VERSION,
+    version,
     notes: normalizedNotes,
   };
 }

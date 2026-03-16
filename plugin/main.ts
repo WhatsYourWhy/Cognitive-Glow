@@ -93,19 +93,19 @@ export default class CognitiveGlowPlugin extends Plugin {
     );
 
     this.addCommand({
-      id: "cognitive-glow-dump-scores",
-      name: "Dump Glow Scores to Console",
+      id: "dump-scores",
+      name: "Dump glow scores to console",
       callback: () => {
         const records = this.getGlowRecords()
           .sort((a, b) => b.glowScore - a.glowScore)
           .slice(0, 20);
-        console.log("Cognitive Glow – Top Notes:", records);
+        console.debug("Cognitive Glow – Top Notes:", records);
       },
     });
 
     this.addCommand({
-      id: "cognitive-glow-show-persisted-data",
-      name: "Show Persisted Data (JSON)",
+      id: "show-persisted-data",
+      name: "Show persisted data (JSON)",
       callback: () => {
         const payload = this.getPersistedData();
         const serialized = JSON.stringify(payload, null, 2);
@@ -172,9 +172,9 @@ export default class CognitiveGlowPlugin extends Plugin {
     this.refreshViews();
   }
 
-  async updateSettings(
+  updateSettings(
     updater: (settings: CognitiveGlowSettings) => void,
-  ): Promise<void> {
+  ): void {
     updater(this.settings);
     this.normalizeWeightSettings(this.settings);
     this.scheduleSave();
@@ -274,7 +274,7 @@ class PersistedDataModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.createEl("h2", {
-      text: "Cognitive Glow Persisted Data (JSON)",
+      text: "Cognitive Glow persisted data (JSON)",
     });
     const pre = contentEl.createEl("pre");
     pre.textContent = this.serializedData;
@@ -292,7 +292,7 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "Cognitive Glow Settings" });
+    new Setting(containerEl).setName("Cognitive Glow settings").setHeading();
 
     const settings = this.plugin.getSettings();
     const clampNumber = (
@@ -309,15 +309,15 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
     };
 
     new Setting(containerEl)
-      .setName("Focus mode top N")
-      .setDesc("Number of notes to show in Focus Mode.")
+      .setName("Focus mode top n")
+      .setDesc("Number of notes to show in focus mode.")
       .addText((text) =>
         text
           .setPlaceholder("5")
           .setValue(String(settings.focusTopN))
-          .onChange(async (value) => {
+          .onChange((value) => {
             const n = Number.parseInt(value, 10);
-            await this.plugin.updateSettings((next) => {
+            this.plugin.updateSettings((next) => {
               next.focusTopN = Number.isNaN(n) ? 5 : Math.max(1, n);
             });
           }),
@@ -325,12 +325,12 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Show low-glow notes")
-      .setDesc("Include notes with very low glow scores in Normal mode.")
+      .setDesc("Include notes with very low glow scores in normal mode.")
       .addToggle((toggle) =>
         toggle
           .setValue(settings.showArchived)
-          .onChange(async (value) => {
-            await this.plugin.updateSettings((next) => {
+          .onChange((value) => {
+            this.plugin.updateSettings((next) => {
               next.showArchived = value;
             });
           }),
@@ -343,9 +343,9 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
         text
           .setPlaceholder(String(settings.tauRecencyMs))
           .setValue(String(settings.tauRecencyMs))
-          .onChange(async (value) => {
+          .onChange((value) => {
             const nextValue = clampNumber(value, settings.tauRecencyMs, 1);
-            await this.plugin.updateSettings((next) => {
+            this.plugin.updateSettings((next) => {
               next.tauRecencyMs = nextValue;
             });
           }),
@@ -360,13 +360,13 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
         text
           .setPlaceholder(String(settings.hitCountMaxScale))
           .setValue(String(settings.hitCountMaxScale))
-          .onChange(async (value) => {
+          .onChange((value) => {
             const nextValue = clampNumber(
               value,
               settings.hitCountMaxScale,
               1,
             );
-            await this.plugin.updateSettings((next) => {
+            this.plugin.updateSettings((next) => {
               next.hitCountMaxScale = Math.floor(nextValue);
             });
           }),
@@ -381,13 +381,13 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
         text
           .setPlaceholder(String(settings.maxRecords))
           .setValue(String(settings.maxRecords))
-          .onChange(async (value) => {
+          .onChange((value) => {
             const nextValue = clampNumber(
               value,
               settings.maxRecords,
               0,
             );
-            await this.plugin.updateSettings((next) => {
+            this.plugin.updateSettings((next) => {
               next.maxRecords = Math.floor(nextValue);
             });
           }),
@@ -400,9 +400,9 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
         text
           .setPlaceholder(String(settings.weightRecency))
           .setValue(String(settings.weightRecency))
-          .onChange(async (value) => {
+          .onChange((value) => {
             const nextValue = clampNumber(value, settings.weightRecency, 0, 1);
-            await this.plugin.updateSettings((next) => {
+            this.plugin.updateSettings((next) => {
               next.weightRecency = nextValue;
             });
           }),
@@ -415,14 +415,14 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
         text
           .setPlaceholder(String(settings.weightFrequency))
           .setValue(String(settings.weightFrequency))
-          .onChange(async (value) => {
+          .onChange((value) => {
             const nextValue = clampNumber(
               value,
               settings.weightFrequency,
               0,
               1,
             );
-            await this.plugin.updateSettings((next) => {
+            this.plugin.updateSettings((next) => {
               next.weightFrequency = nextValue;
             });
           }),
@@ -435,14 +435,14 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
         text
           .setPlaceholder(String(settings.weightGravity))
           .setValue(String(settings.weightGravity))
-          .onChange(async (value) => {
+          .onChange((value) => {
             const nextValue = clampNumber(
               value,
               settings.weightGravity,
               0,
               1,
             );
-            await this.plugin.updateSettings((next) => {
+            this.plugin.updateSettings((next) => {
               next.weightGravity = nextValue;
             });
           }),
