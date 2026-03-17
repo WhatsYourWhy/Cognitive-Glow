@@ -116,7 +116,7 @@ export default class CognitiveGlowPlugin extends Plugin {
     this.addSettingTab(new CognitiveGlowSettingTab(this.app, this));
 
     this.app.workspace.onLayoutReady(() => {
-      void this.activateView();
+      this.activateView().catch(() => {});
     });
   }
 
@@ -215,7 +215,7 @@ export default class CognitiveGlowPlugin extends Plugin {
       window.clearTimeout(this.saveTimeout);
     }
     this.saveTimeout = window.setTimeout(() => {
-      void this.performSave();
+      this.performSave().catch(() => {});
     }, 5000);
   }
 

@@ -371,7 +371,8 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
     });
     this.addSettingTab(new CognitiveGlowSettingTab(this.app, this));
     this.app.workspace.onLayoutReady(() => {
-      void this.activateView();
+      this.activateView().catch(() => {
+      });
     });
   }
   onunload() {
@@ -456,7 +457,8 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
       window.clearTimeout(this.saveTimeout);
     }
     this.saveTimeout = window.setTimeout(() => {
-      void this.performSave();
+      this.performSave().catch(() => {
+      });
     }, 5e3);
   }
   async performSave() {

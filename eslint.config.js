@@ -79,6 +79,7 @@ const generalRules = {
   "@typescript-eslint/no-deprecated": "error",
   "@typescript-eslint/no-unused-vars": ["warn", { args: "none" }],
   "@typescript-eslint/require-await": "error",
+  "@typescript-eslint/no-misused-promises": "error",
   "@typescript-eslint/no-explicit-any": ["error", { fixToUnknown: true }],
   "@microsoft/sdl/no-document-write": "error",
   "@microsoft/sdl/no-inner-html": "error",
