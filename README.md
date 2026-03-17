@@ -14,22 +14,22 @@ Cognitive Glow is an Obsidian plugin that shows a sidebar list of notes ranked b
 
 1. `npm install`
 2. `npm run build`
-3. Copy files into `.obsidian/plugins/cognitive-glow/`:
-   - `plugin/manifest.json` (rename to `manifest.json` in the target folder)
-   - `plugin/main.js` (rename to `main.js` in the target folder)
+3. Copy these files from the repo root into `.obsidian/plugins/cognitive-glow/`:
+   - `manifest.json`
+   - `main.js`
    - `styles.css`
-4. Enable **Cognitive Glow** in Community Plugins.
+4. Enable **Cognitive glow** in Community Plugins.
 
 ## Usage
 
 1. Open notes normally in Obsidian.
-2. Open the **Cognitive Glow** sidebar view (it auto-opens once on layout ready if no glow view exists).
+2. Open the **Cognitive glow** sidebar view (it auto-opens once on layout ready if no glow view exists).
 3. Switch between **Normal** and **Focus**.
 4. Click a row to open that note.
 
 ### Command examples
 
-- **Dump Glow Scores to Console**
+- **Dump glow scores to console**
   - Logs up to 20 notes sorted by glow score:
 
 ```js
@@ -39,7 +39,7 @@ Cognitive Glow is an Obsidian plugin that shows a sidebar list of notes ranked b
 ]
 ```
 
-- **Show Persisted Data (JSON)**
+- **Show persisted data (JSON)**
   - Opens a modal with the exact saved payload (`version`, `stats`, `settings`).
 
 ## Settings
