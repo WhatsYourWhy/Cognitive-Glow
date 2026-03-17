@@ -7,7 +7,7 @@ const context = await esbuild.context({
   bundle: true,
   format: 'cjs',
   target: 'es2018',
-  outfile: 'plugin/main.js',
+  outfile: 'main.js',
   sourcemap: watch,
   external: ['obsidian']
 });

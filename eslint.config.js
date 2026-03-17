@@ -86,6 +86,7 @@ const generalRules = {
 };
 
 export default [
+  { ignores: ["main.js"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

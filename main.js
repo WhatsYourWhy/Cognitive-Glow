@@ -280,10 +280,10 @@ var GlowView = class extends import_obsidian.ItemView {
         "style",
         `width: ${widthPercent}%; opacity: ${opacity};`
       );
-      row.addEventListener(
-        "click",
-        () => this.app.workspace.openLinkText(record.path, "", false)
-      );
+      row.addEventListener("click", () => {
+        this.app.workspace.openLinkText(record.path, "", false).catch(() => {
+        });
+      });
       const label = row.createDiv({ cls: "cognitive-glow-label" });
       label.setText(record.path);
     });
