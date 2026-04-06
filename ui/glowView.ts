@@ -26,19 +26,21 @@ export class GlowView extends ItemView {
   }
 
   getDisplayText(): string {
-    return "Cognitive Glow";
+    return "Cognitive glow";
   }
 
   getIcon(): string {
     return "sparkles";
   }
 
-  onOpen(): void {
+  onOpen(): Promise<void> {
     this.render();
+    return Promise.resolve();
   }
 
-  onClose(): void {
+  onClose(): Promise<void> {
     this.contentEl.empty();
+    return Promise.resolve();
   }
 
   render(): void {
@@ -49,7 +51,7 @@ export class GlowView extends ItemView {
     const settings = getSettings();
 
     const header = container.createDiv({ cls: "cognitive-glow-header" });
-    header.createEl("h3", { text: "Cognitive Glow" });
+    header.createEl("h3", { text: "Cognitive glow" });
     const modeControls = header.createDiv({
       cls: "cognitive-glow-mode-controls",
     });

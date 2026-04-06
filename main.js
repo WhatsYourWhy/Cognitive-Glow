@@ -207,16 +207,18 @@ var GlowView = class extends import_obsidian.ItemView {
     return GLOW_VIEW_TYPE;
   }
   getDisplayText() {
-    return "Cognitive Glow";
+    return "Cognitive glow";
   }
   getIcon() {
     return "sparkles";
   }
   onOpen() {
     this.render();
+    return Promise.resolve();
   }
   onClose() {
     this.contentEl.empty();
+    return Promise.resolve();
   }
   render() {
     const { getRecords, getSettings } = this.options;
@@ -224,7 +226,7 @@ var GlowView = class extends import_obsidian.ItemView {
     container.empty();
     const settings = getSettings();
     const header = container.createDiv({ cls: "cognitive-glow-header" });
-    header.createEl("h3", { text: "Cognitive Glow" });
+    header.createEl("h3", { text: "Cognitive glow" });
     const modeControls = header.createDiv({
       cls: "cognitive-glow-mode-controls"
     });
@@ -344,7 +346,7 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
         getSettings: () => this.getSettings()
       })
     );
-    this.addRibbonIcon("sparkles", "Cognitive Glow", () => {
+    this.addRibbonIcon("sparkles", "Cognitive glow", () => {
       this.activateView().catch(() => {
       });
     });
@@ -385,7 +387,7 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
     );
     this.addCommand({
       id: "open-glow-sidebar",
-      name: "Open Cognitive Glow sidebar",
+      name: "Open sidebar",
       callback: () => {
         this.activateView().catch(() => {
         });
@@ -415,8 +417,11 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
     });
   }
   onunload() {
+    this.commitPendingOpen(Date.now());
     if (this.saveTimeout != null) {
       window.clearTimeout(this.saveTimeout);
+      this.performSave().catch(() => {
+      });
     }
     this.saveTimeout = null;
   }
@@ -572,9 +577,6 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
     let changed = nextRecency !== settings.weightRecency || nextFrequency !== settings.weightFrequency || nextGravity !== settings.weightGravity;
     const total = nextRecency + nextFrequency + nextGravity;
     if (total > 1) {
-      console.debug(
-        "Cognitive Glow: weights exceeded 1; normalizing."
-      );
       nextRecency /= total;
       nextFrequency /= total;
       nextGravity /= total;
@@ -594,7 +596,7 @@ var PersistedDataModal = class extends import_obsidian2.Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    new import_obsidian2.Setting(contentEl).setName("Cognitive Glow persisted data (JSON)").setHeading();
+    new import_obsidian2.Setting(contentEl).setName("Cognitive glow persisted data (JSON)").setHeading();
     const pre = contentEl.createEl("pre");
     pre.textContent = this.serializedData;
   }
@@ -608,7 +610,7 @@ var CognitiveGlowSettingTab = class extends import_obsidian2.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     const settings = this.plugin.getSettings();
-    new import_obsidian2.Setting(containerEl).setName("General").setHeading();
+    new import_obsidian2.Setting(containerEl).setName("Display").setHeading();
     const decayPresets = {
       "86400000": "1 day",
       "259200000": "3 days",
@@ -621,7 +623,7 @@ var CognitiveGlowSettingTab = class extends import_obsidian2.PluginSettingTab {
       for (const [val, label] of Object.entries(decayPresets)) {
         drop.addOption(val, label);
       }
-      drop.addOption("custom", "Custom (see Advanced)");
+      drop.addOption("custom", "Custom (see advanced)");
       const isPreset = String(settings.tauRecencyMs) in decayPresets;
       drop.setValue(
         isPreset ? String(settings.tauRecencyMs) : "custom"
@@ -634,7 +636,7 @@ var CognitiveGlowSettingTab = class extends import_obsidian2.PluginSettingTab {
         }
       });
     });
-    new import_obsidian2.Setting(containerEl).setName("Focus mode: max notes").setDesc("How many top-glowing notes appear in Focus mode.").addText(
+    new import_obsidian2.Setting(containerEl).setName("Max notes in focus mode").setDesc("How many top-glowing notes appear in focus mode.").addText(
       (text) => text.setPlaceholder("5").setValue(String(settings.focusTopN)).onChange(async (value) => {
         const n = Number.parseInt(value, 10);
         await this.plugin.updateSettings((next) => {
@@ -650,7 +652,7 @@ var CognitiveGlowSettingTab = class extends import_obsidian2.PluginSettingTab {
       })
     );
     new import_obsidian2.Setting(containerEl).setName("Sidebar placement").setDesc(
-      "Which sidebar to open the Glow panel in. Changing this moves the panel immediately."
+      "Which sidebar to open the glow panel in. Takes effect immediately."
     ).addDropdown(
       (drop) => drop.addOption("right", "Right (default)").addOption("left", "Left").setValue(settings.sidebarSide).onChange(async (value) => {
         await this.plugin.updateSettings((next) => {
@@ -672,7 +674,7 @@ var CognitiveGlowSettingTab = class extends import_obsidian2.PluginSettingTab {
     new import_obsidian2.Setting(containerEl).setName("Tracked folders").setDesc(
       "Only track notes in these folders (one folder path per line). Leave blank to track your entire vault."
     ).addTextArea((area) => {
-      area.setPlaceholder("Projects/\nDaily/").setValue(settings.includedFolders.join("\n")).onChange(async (value) => {
+      area.setPlaceholder("Projects/\ndaily/").setValue(settings.includedFolders.join("\n")).onChange(async (value) => {
         await this.plugin.updateSettings((next) => {
           next.includedFolders = value.split("\n").map((s) => s.trim()).filter(Boolean);
         });
@@ -682,7 +684,7 @@ var CognitiveGlowSettingTab = class extends import_obsidian2.PluginSettingTab {
     new import_obsidian2.Setting(containerEl).setName("Excluded folders").setDesc(
       "Never track notes in these folders (one folder path per line)."
     ).addTextArea((area) => {
-      area.setPlaceholder("Templates/\nArchive/").setValue(settings.excludedFolders.join("\n")).onChange(async (value) => {
+      area.setPlaceholder("Templates/\narchive/").setValue(settings.excludedFolders.join("\n")).onChange(async (value) => {
         await this.plugin.updateSettings((next) => {
           next.excludedFolders = value.split("\n").map((s) => s.trim()).filter(Boolean);
         });

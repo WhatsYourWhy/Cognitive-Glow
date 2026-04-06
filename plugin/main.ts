@@ -73,7 +73,7 @@ export default class CognitiveGlowPlugin extends Plugin {
         }),
     );
 
-    this.addRibbonIcon("sparkles", "Cognitive Glow", () => {
+    this.addRibbonIcon("sparkles", "Cognitive glow", () => {
       this.activateView().catch(() => {});
     });
 
@@ -115,7 +115,7 @@ export default class CognitiveGlowPlugin extends Plugin {
 
     this.addCommand({
       id: "open-glow-sidebar",
-      name: "Open Cognitive Glow sidebar",
+      name: "Open sidebar",
       callback: () => {
         this.activateView().catch(() => {});
       },
@@ -150,8 +150,13 @@ export default class CognitiveGlowPlugin extends Plugin {
   }
 
   onunload(): void {
+    // Commit any pending dwell visit before unloading
+    this.commitPendingOpen(Date.now());
+
     if (this.saveTimeout != null) {
       window.clearTimeout(this.saveTimeout);
+      // Flush immediately rather than letting the debounce lapse
+      this.performSave().catch(() => {});
     }
     this.saveTimeout = null;
   }
@@ -353,9 +358,7 @@ export default class CognitiveGlowPlugin extends Plugin {
       nextGravity !== settings.weightGravity;
     const total = nextRecency + nextFrequency + nextGravity;
     if (total > 1) {
-      console.debug(
-        "Cognitive Glow: weights exceeded 1; normalizing.",
-      );
+      // weights exceeded 1; normalizing silently
       nextRecency /= total;
       nextFrequency /= total;
       nextGravity /= total;
@@ -380,7 +383,7 @@ class PersistedDataModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     new Setting(contentEl)
-      .setName("Cognitive Glow persisted data (JSON)")
+      .setName("Cognitive glow persisted data (JSON)")
       .setHeading();
     const pre = contentEl.createEl("pre");
     pre.textContent = this.serializedData;
@@ -401,8 +404,8 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
 
     const settings = this.plugin.getSettings();
 
-    // ── General ──────────────────────────────────────────
-    new Setting(containerEl).setName("General").setHeading();
+    // ── Display ──────────────────────────────────────────
+    new Setting(containerEl).setName("Display").setHeading();
 
     const decayPresets: Record<string, string> = {
       "86400000": "1 day",
@@ -420,7 +423,7 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
         for (const [val, label] of Object.entries(decayPresets)) {
           drop.addOption(val, label);
         }
-        drop.addOption("custom", "Custom (see Advanced)");
+        drop.addOption("custom", "Custom (see advanced)");
         const isPreset = String(settings.tauRecencyMs) in decayPresets;
         drop.setValue(
           isPreset ? String(settings.tauRecencyMs) : "custom",
@@ -435,8 +438,8 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Focus mode: max notes")
-      .setDesc("How many top-glowing notes appear in Focus mode.")
+      .setName("Max notes in focus mode")
+      .setDesc("How many top-glowing notes appear in focus mode.")
       .addText((text) =>
         text
           .setPlaceholder("5")
@@ -465,7 +468,7 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Sidebar placement")
       .setDesc(
-        "Which sidebar to open the Glow panel in. Changing this moves the panel immediately.",
+        "Which sidebar to open the glow panel in. Takes effect immediately.",
       )
       .addDropdown((drop) =>
         drop
@@ -510,7 +513,7 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
       )
       .addTextArea((area) => {
         area
-          .setPlaceholder("Projects/\nDaily/")
+          .setPlaceholder("Projects/\ndaily/")
           .setValue(settings.includedFolders.join("\n"))
           .onChange(async (value) => {
             await this.plugin.updateSettings((next) => {
@@ -530,7 +533,7 @@ class CognitiveGlowSettingTab extends PluginSettingTab {
       )
       .addTextArea((area) => {
         area
-          .setPlaceholder("Templates/\nArchive/")
+          .setPlaceholder("Templates/\narchive/")
           .setValue(settings.excludedFolders.join("\n"))
           .onChange(async (value) => {
             await this.plugin.updateSettings((next) => {
