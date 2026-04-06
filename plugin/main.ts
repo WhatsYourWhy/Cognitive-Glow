@@ -297,13 +297,15 @@ export default class CognitiveGlowPlugin extends Plugin {
   private handleFileOpen(file: TFile): void {
     const now = Date.now();
 
+    // Commit previous pending open before doing anything else, so switching
+    // to an Untitled note (or an excluded folder) doesn't leave the prior
+    // note's dwell timer running indefinitely.
+    this.commitPendingOpen(now);
+
     // Never track Untitled notes
     if (/^Untitled(\s+\d+)?$/.test(file.basename)) {
       return;
     }
-
-    // Commit previous pending open (before replacing it)
-    this.commitPendingOpen(now);
 
     // Only track notes that pass folder scope rules
     if (!this.isPathTracked(file.path)) {

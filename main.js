@@ -533,10 +533,10 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
   }
   handleFileOpen(file) {
     const now = Date.now();
+    this.commitPendingOpen(now);
     if (/^Untitled(\s+\d+)?$/.test(file.basename)) {
       return;
     }
-    this.commitPendingOpen(now);
     if (!this.isPathTracked(file.path)) {
       return;
     }
