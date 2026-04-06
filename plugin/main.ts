@@ -212,9 +212,27 @@ export default class CognitiveGlowPlugin extends Plugin {
     updater: (settings: CognitiveGlowSettings) => void,
   ): Promise<void> {
     const oldSide = this.settings.sidebarSide;
+    const oldDwellMs = this.settings.minDwellMs;
     updater(this.settings);
     this.normalizeWeightSettings(this.settings);
     this.scheduleSave();
+
+    // If the dwell threshold changed while a note is already pending,
+    // reschedule the timer so the new threshold is respected.
+    if (this.settings.minDwellMs !== oldDwellMs && this.pendingOpen !== null) {
+      this.cancelDwellTimer();
+      const elapsed = Date.now() - this.pendingOpen.openedAt;
+      const remaining = this.settings.minDwellMs - elapsed;
+      if (remaining <= 0) {
+        // Already exceeds new threshold — commit now
+        this.commitPendingOpen(Date.now());
+      } else {
+        this.dwellTimer = window.setTimeout(() => {
+          this.dwellTimer = null;
+          this.commitPendingOpen(Date.now());
+        }, remaining);
+      }
+    }
 
     if (this.settings.sidebarSide !== oldSide) {
       // Move the view to the new sidebar side
@@ -296,7 +314,7 @@ export default class CognitiveGlowPlugin extends Plugin {
     this.pendingOpen = null;
     const elapsed = now - openedAt;
     const threshold = this.settings.minDwellMs;
-    if (threshold === 0 || elapsed >= threshold) {
+    if ((threshold === 0 || elapsed >= threshold) && this.isPathTracked(path)) {
       updateStatsOnOpen(this.stats, path, openedAt, elapsed);
       this.scheduleSave();
       this.refreshViews();
