@@ -20,6 +20,10 @@ export interface GlowConfig {
   focusTopN: number;
   showArchived: boolean;
   maxRecords: number;
+  sidebarSide: "left" | "right";
+  minDwellMs: number;
+  includedFolders: string[];
+  excludedFolders: string[];
 }
 
 export interface GlowRecord {

@@ -1,5 +1,3 @@
-import type { TFile } from "obsidian";
-
 import type {
   GlowConfig,
   GlowRecord,
@@ -11,10 +9,10 @@ export type { GlowConfig, GlowRecord, NoteStats, StatsIndex } from "./types";
 
 export function updateStatsOnOpen(
   index: StatsIndex,
-  file: TFile,
+  path: string,
   now: number,
+  dwellMs?: number,
 ): void {
-  const path = file.path;
   const existing: NoteStats = index.notes[path] ?? {
     path,
     hitCount: 0,
@@ -23,6 +21,9 @@ export function updateStatsOnOpen(
 
   existing.hitCount += 1;
   existing.lastOpened = now;
+  if (dwellMs !== undefined) {
+    existing.dwellMs = (existing.dwellMs ?? 0) + dwellMs;
+  }
   index.notes[path] = existing;
 }
 
