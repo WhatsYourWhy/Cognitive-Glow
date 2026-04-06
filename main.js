@@ -316,6 +316,7 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
     this.settings = { ...DEFAULT_SETTINGS };
     this.saveTimeout = null;
     this.pendingOpen = null;
+    this.dwellTimer = null;
   }
   async onload() {
     const persisted = await loadAllStats(
@@ -517,7 +518,14 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
     }
     return true;
   }
+  cancelDwellTimer() {
+    if (this.dwellTimer !== null) {
+      window.clearTimeout(this.dwellTimer);
+      this.dwellTimer = null;
+    }
+  }
   commitPendingOpen(now) {
+    this.cancelDwellTimer();
     if (this.pendingOpen === null) {
       return;
     }
@@ -546,6 +554,10 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
       this.refreshViews();
     } else {
       this.pendingOpen = { path: file.path, openedAt: now };
+      this.dwellTimer = window.setTimeout(() => {
+        this.dwellTimer = null;
+        this.commitPendingOpen(Date.now());
+      }, this.settings.minDwellMs);
     }
   }
   scheduleSave() {

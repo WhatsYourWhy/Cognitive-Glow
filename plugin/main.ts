@@ -39,6 +39,7 @@ export default class CognitiveGlowPlugin extends Plugin {
   private settings: CognitiveGlowSettings = { ...DEFAULT_SETTINGS };
   private saveTimeout: number | null = null;
   private pendingOpen: PendingOpen | null = null;
+  private dwellTimer: number | null = null;
 
   async onload(): Promise<void> {
     const persisted = await loadAllStats(
@@ -150,7 +151,7 @@ export default class CognitiveGlowPlugin extends Plugin {
   }
 
   onunload(): void {
-    // Commit any pending dwell visit before unloading
+    // Commit any pending dwell visit before unloading (also cancels dwellTimer)
     this.commitPendingOpen(Date.now());
 
     if (this.saveTimeout != null) {
@@ -279,7 +280,15 @@ export default class CognitiveGlowPlugin extends Plugin {
     return true;
   }
 
+  private cancelDwellTimer(): void {
+    if (this.dwellTimer !== null) {
+      window.clearTimeout(this.dwellTimer);
+      this.dwellTimer = null;
+    }
+  }
+
   private commitPendingOpen(now: number): void {
+    this.cancelDwellTimer();
     if (this.pendingOpen === null) {
       return;
     }
@@ -318,8 +327,14 @@ export default class CognitiveGlowPlugin extends Plugin {
       this.scheduleSave();
       this.refreshViews();
     } else {
-      // Dwell mode: mark as pending, commit when next file opens
+      // Dwell mode: mark as pending and schedule a threshold-time commit so
+      // the visit is recorded even if no subsequent file-open event occurs
+      // (long reading sessions, unexpected shutdowns after threshold, etc.).
       this.pendingOpen = { path: file.path, openedAt: now };
+      this.dwellTimer = window.setTimeout(() => {
+        this.dwellTimer = null;
+        this.commitPendingOpen(Date.now());
+      }, this.settings.minDwellMs);
     }
   }
 
