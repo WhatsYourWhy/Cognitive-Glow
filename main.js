@@ -26,9 +26,8 @@ module.exports = __toCommonJS(main_exports);
 var import_obsidian2 = require("obsidian");
 
 // core/metrics.ts
-function updateStatsOnOpen(index, file, now) {
-  var _a;
-  const path = file.path;
+function updateStatsOnOpen(index, path, now, dwellMs) {
+  var _a, _b;
   const existing = (_a = index.notes[path]) != null ? _a : {
     path,
     hitCount: 0,
@@ -36,6 +35,9 @@ function updateStatsOnOpen(index, file, now) {
   };
   existing.hitCount += 1;
   existing.lastOpened = now;
+  if (dwellMs !== void 0) {
+    existing.dwellMs = ((_b = existing.dwellMs) != null ? _b : 0) + dwellMs;
+  }
   index.notes[path] = existing;
 }
 function migrateStatsOnRename(index, oldPath, newPath) {
@@ -184,7 +186,11 @@ var DEFAULT_SETTINGS = {
   weightGravity: 0,
   focusTopN: 5,
   showArchived: true,
-  maxRecords: 3e3
+  maxRecords: 3e3,
+  sidebarSide: "right",
+  minDwellMs: 3e4,
+  includedFolders: [],
+  excludedFolders: []
 };
 
 // ui/glowView.ts
@@ -203,11 +209,16 @@ var GlowView = class extends import_obsidian.ItemView {
   getDisplayText() {
     return "Cognitive glow";
   }
+  getIcon() {
+    return "sparkles";
+  }
   onOpen() {
     this.render();
+    return Promise.resolve();
   }
   onClose() {
     this.contentEl.empty();
+    return Promise.resolve();
   }
   render() {
     const { getRecords, getSettings } = this.options;
@@ -255,12 +266,12 @@ var GlowView = class extends import_obsidian.ItemView {
       records = records.slice(0, topN);
       header.createEl("p", {
         cls: "cognitive-glow-mode",
-        text: `Showing top ${topN} notes by glow score.`
+        text: `Top ${topN} notes by glow`
       });
     } else {
       header.createEl("p", {
         cls: "cognitive-glow-mode",
-        text: "Showing all notes by glow score."
+        text: "All notes by glow score"
       });
     }
     const maxRecords = Math.max(0, Math.floor(settings.maxRecords));
@@ -268,24 +279,31 @@ var GlowView = class extends import_obsidian.ItemView {
       records = records.slice(0, maxRecords);
     }
     if (records.length === 0) {
-      list.createEl("p", { text: "No glow stats yet." });
+      list.createEl("p", {
+        cls: "cognitive-glow-empty",
+        text: "No glow data yet \u2014 open some notes to get started."
+      });
       return;
     }
     records.forEach((record) => {
       const glowScore = Math.min(1, Math.max(0, record.glowScore));
       const widthPercent = Math.round(glowScore * 100);
-      const opacity = 0.2 + glowScore * 0.8;
+      const opacity = 0.25 + glowScore * 0.75;
+      const parts = record.path.split("/");
+      const filename = parts[parts.length - 1];
+      const displayName = filename.endsWith(".md") ? filename.slice(0, -3) : filename;
       const row = list.createDiv({ cls: "cognitive-glow-row" });
       row.setAttr(
         "style",
-        `width: ${widthPercent}%; opacity: ${opacity};`
+        `width: ${widthPercent}%; opacity: ${opacity.toFixed(3)}; --glow-score: ${glowScore.toFixed(3)};`
       );
+      row.setAttr("title", record.path);
       row.addEventListener("click", () => {
         this.app.workspace.openLinkText(record.path, "", false).catch(() => {
         });
       });
       const label = row.createDiv({ cls: "cognitive-glow-label" });
-      label.setText(record.path);
+      label.setText(displayName);
     });
   }
 };
@@ -297,6 +315,8 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
     this.stats = { version: CURRENT_VERSION, notes: {} };
     this.settings = { ...DEFAULT_SETTINGS };
     this.saveTimeout = null;
+    this.pendingOpen = null;
+    this.dwellTimer = null;
   }
   async onload() {
     const persisted = await loadAllStats(
@@ -327,17 +347,27 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
         getSettings: () => this.getSettings()
       })
     );
+    this.addRibbonIcon("sparkles", "Cognitive glow", () => {
+      this.activateView().catch(() => {
+      });
+    });
     this.registerEvent(
       this.app.workspace.on("file-open", (file) => {
         if (file instanceof import_obsidian2.TFile) {
           this.handleFileOpen(file);
+        } else {
+          this.commitPendingOpen(Date.now());
         }
       })
     );
     this.registerEvent(
       this.app.vault.on("rename", (file, oldPath) => {
+        var _a;
         if (file instanceof import_obsidian2.TFile) {
           migrateStatsOnRename(this.stats, oldPath, file.path);
+          if (((_a = this.pendingOpen) == null ? void 0 : _a.path) === oldPath) {
+            this.pendingOpen.path = file.path;
+          }
           this.scheduleSave();
           this.refreshViews();
         }
@@ -345,13 +375,25 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
     );
     this.registerEvent(
       this.app.vault.on("delete", (file) => {
+        var _a;
         if (file instanceof import_obsidian2.TFile) {
           removeStatsOnDelete(this.stats, file.path);
+          if (((_a = this.pendingOpen) == null ? void 0 : _a.path) === file.path) {
+            this.pendingOpen = null;
+          }
           this.scheduleSave();
           this.refreshViews();
         }
       })
     );
+    this.addCommand({
+      id: "open-glow-sidebar",
+      name: "Open sidebar",
+      callback: () => {
+        this.activateView().catch(() => {
+        });
+      }
+    });
     this.addCommand({
       id: "dump-scores",
       name: "Dump glow scores to console",
@@ -376,8 +418,11 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
     });
   }
   onunload() {
+    this.commitPendingOpen(Date.now());
     if (this.saveTimeout != null) {
       window.clearTimeout(this.saveTimeout);
+      this.performSave().catch(() => {
+      });
     }
     this.saveTimeout = null;
   }
@@ -394,7 +439,7 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
         }
         return void 0;
       }
-    );
+    ).filter((record) => this.isPathTracked(record.path));
     const maxRecords = Math.max(0, Math.floor(this.settings.maxRecords));
     if (maxRecords > 0 && records.length > maxRecords) {
       return records.slice().sort((a, b) => b.glowScore - a.glowScore).slice(0, maxRecords);
@@ -421,11 +466,31 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
     this.scheduleSave();
     this.refreshViews();
   }
-  updateSettings(updater) {
+  async updateSettings(updater) {
+    const oldSide = this.settings.sidebarSide;
+    const oldDwellMs = this.settings.minDwellMs;
     updater(this.settings);
     this.normalizeWeightSettings(this.settings);
     this.scheduleSave();
-    this.refreshViews();
+    if (this.settings.minDwellMs !== oldDwellMs && this.pendingOpen !== null) {
+      this.cancelDwellTimer();
+      const elapsed = Date.now() - this.pendingOpen.openedAt;
+      const remaining = this.settings.minDwellMs - elapsed;
+      if (remaining <= 0) {
+        this.commitPendingOpen(Date.now());
+      } else {
+        this.dwellTimer = window.setTimeout(() => {
+          this.dwellTimer = null;
+          this.commitPendingOpen(Date.now());
+        }, remaining);
+      }
+    }
+    if (this.settings.sidebarSide !== oldSide) {
+      this.app.workspace.getLeavesOfType(GLOW_VIEW_TYPE).forEach((leaf) => leaf.detach());
+      await this.activateView();
+    } else {
+      this.refreshViews();
+    }
   }
   refreshViews() {
     this.app.workspace.getLeavesOfType(GLOW_VIEW_TYPE).forEach((leaf) => {
@@ -436,21 +501,78 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
     });
   }
   async activateView() {
-    var _a;
     const leaves = this.app.workspace.getLeavesOfType(GLOW_VIEW_TYPE);
     if (leaves.length === 0) {
-      await ((_a = this.app.workspace.getRightLeaf(false)) == null ? void 0 : _a.setViewState({
-        type: GLOW_VIEW_TYPE,
-        active: true
-      }));
+      const leaf = this.settings.sidebarSide === "left" ? this.app.workspace.getLeftLeaf(false) : this.app.workspace.getRightLeaf(false);
+      if (leaf) {
+        await leaf.setViewState({ type: GLOW_VIEW_TYPE, active: true });
+      }
+    } else {
+      this.app.workspace.revealLeaf(leaves[0]);
     }
     this.refreshViews();
   }
+  /** Returns true if this path should be tracked per current folder settings. */
+  isPathTracked(path) {
+    const { includedFolders, excludedFolders } = this.settings;
+    for (const folder of excludedFolders) {
+      const prefix = folder.endsWith("/") ? folder : `${folder}/`;
+      if (path.startsWith(prefix) || path === folder) {
+        return false;
+      }
+    }
+    if (includedFolders.length > 0) {
+      for (const folder of includedFolders) {
+        const prefix = folder.endsWith("/") ? folder : `${folder}/`;
+        if (path.startsWith(prefix) || path === folder) {
+          return true;
+        }
+      }
+      return false;
+    }
+    return true;
+  }
+  cancelDwellTimer() {
+    if (this.dwellTimer !== null) {
+      window.clearTimeout(this.dwellTimer);
+      this.dwellTimer = null;
+    }
+  }
+  commitPendingOpen(now) {
+    this.cancelDwellTimer();
+    if (this.pendingOpen === null) {
+      return;
+    }
+    const { path, openedAt } = this.pendingOpen;
+    this.pendingOpen = null;
+    const elapsed = now - openedAt;
+    const threshold = this.settings.minDwellMs;
+    if ((threshold === 0 || elapsed >= threshold) && this.isPathTracked(path)) {
+      updateStatsOnOpen(this.stats, path, openedAt, elapsed);
+      this.scheduleSave();
+      this.refreshViews();
+    }
+  }
   handleFileOpen(file) {
     const now = Date.now();
-    updateStatsOnOpen(this.stats, file, now);
-    this.scheduleSave();
-    this.refreshViews();
+    this.commitPendingOpen(now);
+    if (/^Untitled(\s+\d+)?$/.test(file.basename)) {
+      return;
+    }
+    if (!this.isPathTracked(file.path)) {
+      return;
+    }
+    if (this.settings.minDwellMs === 0) {
+      updateStatsOnOpen(this.stats, file.path, now);
+      this.scheduleSave();
+      this.refreshViews();
+    } else {
+      this.pendingOpen = { path: file.path, openedAt: now };
+      this.dwellTimer = window.setTimeout(() => {
+        this.dwellTimer = null;
+        this.commitPendingOpen(Date.now());
+      }, this.settings.minDwellMs);
+    }
   }
   scheduleSave() {
     if (this.saveTimeout != null) {
@@ -481,9 +603,6 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
     let changed = nextRecency !== settings.weightRecency || nextFrequency !== settings.weightFrequency || nextGravity !== settings.weightGravity;
     const total = nextRecency + nextFrequency + nextGravity;
     if (total > 1) {
-      console.warn(
-        "Cognitive Glow: weights exceeded 1; normalizing."
-      );
       nextRecency /= total;
       nextFrequency /= total;
       nextGravity /= total;
@@ -503,9 +622,7 @@ var PersistedDataModal = class extends import_obsidian2.Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl("h2", {
-      text: "Cognitive glow persisted data (JSON)"
-    });
+    new import_obsidian2.Setting(contentEl).setName("Cognitive glow persisted data (JSON)").setHeading();
     const pre = contentEl.createEl("pre");
     pre.textContent = this.serializedData;
   }
@@ -518,97 +635,150 @@ var CognitiveGlowSettingTab = class extends import_obsidian2.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    new import_obsidian2.Setting(containerEl).setName("Configuration").setHeading();
     const settings = this.plugin.getSettings();
-    const clampNumber = (value, fallback, min = Number.NEGATIVE_INFINITY, max = Number.POSITIVE_INFINITY) => {
-      const parsed = Number.parseFloat(value);
-      if (Number.isNaN(parsed)) {
-        return fallback;
-      }
-      return Math.min(max, Math.max(min, parsed));
+    new import_obsidian2.Setting(containerEl).setName("Display").setHeading();
+    const decayPresets = {
+      "86400000": "1 day",
+      "259200000": "3 days",
+      "604800000": "1 week",
+      "2592000000": "1 month"
     };
-    new import_obsidian2.Setting(containerEl).setName("Focus mode top n").setDesc("Number of notes to show in focus mode.").addText(
-      (text) => text.setPlaceholder("5").setValue(String(settings.focusTopN)).onChange((value) => {
+    new import_obsidian2.Setting(containerEl).setName("Glow fades after").setDesc(
+      "How quickly a note loses its glow when you stop visiting it."
+    ).addDropdown((drop) => {
+      for (const [val, label] of Object.entries(decayPresets)) {
+        drop.addOption(val, label);
+      }
+      drop.addOption("custom", "Custom (see advanced)");
+      const isPreset = String(settings.tauRecencyMs) in decayPresets;
+      drop.setValue(
+        isPreset ? String(settings.tauRecencyMs) : "custom"
+      );
+      drop.onChange(async (value) => {
+        if (value !== "custom") {
+          await this.plugin.updateSettings((next) => {
+            next.tauRecencyMs = Number(value);
+          });
+        }
+      });
+    });
+    new import_obsidian2.Setting(containerEl).setName("Max notes in focus mode").setDesc("How many top-glowing notes appear in focus mode.").addText(
+      (text) => text.setPlaceholder("5").setValue(String(settings.focusTopN)).onChange(async (value) => {
         const n = Number.parseInt(value, 10);
-        this.plugin.updateSettings((next) => {
+        await this.plugin.updateSettings((next) => {
           next.focusTopN = Number.isNaN(n) ? 5 : Math.max(1, n);
         });
       })
     );
-    new import_obsidian2.Setting(containerEl).setName("Show low-glow notes").setDesc("Include notes with very low glow scores in normal mode.").addToggle(
-      (toggle) => toggle.setValue(settings.showArchived).onChange((value) => {
-        this.plugin.updateSettings((next) => {
-          next.showArchived = value;
+    new import_obsidian2.Setting(containerEl).setName("Hide faded notes").setDesc("Only show notes with a meaningful glow score.").addToggle(
+      (toggle) => toggle.setValue(!settings.showArchived).onChange(async (value) => {
+        await this.plugin.updateSettings((next) => {
+          next.showArchived = !value;
         });
       })
     );
-    new import_obsidian2.Setting(containerEl).setName("Recency decay (ms)").setDesc("Controls how quickly glow fades with time (in milliseconds).").addText(
-      (text) => text.setPlaceholder(String(settings.tauRecencyMs)).setValue(String(settings.tauRecencyMs)).onChange((value) => {
-        const nextValue = clampNumber(value, settings.tauRecencyMs, 1);
-        this.plugin.updateSettings((next) => {
-          next.tauRecencyMs = nextValue;
+    new import_obsidian2.Setting(containerEl).setName("Sidebar placement").setDesc(
+      "Which sidebar to open the glow panel in. Takes effect immediately."
+    ).addDropdown(
+      (drop) => drop.addOption("right", "Right (default)").addOption("left", "Left").setValue(settings.sidebarSide).onChange(async (value) => {
+        await this.plugin.updateSettings((next) => {
+          next.sidebarSide = value;
         });
       })
     );
-    new import_obsidian2.Setting(containerEl).setName("Hit count max scale").setDesc(
-      "Scaling target for frequency (higher values make frequent opens matter less)."
+    new import_obsidian2.Setting(containerEl).setName("Tracking").setHeading();
+    new import_obsidian2.Setting(containerEl).setName("Minimum open time (seconds)").setDesc(
+      "A note must stay open this long before it counts as a visit. Prevents quick flick-throughs from inflating scores. Set to 0 to count every open instantly."
     ).addText(
-      (text) => text.setPlaceholder(String(settings.hitCountMaxScale)).setValue(String(settings.hitCountMaxScale)).onChange((value) => {
-        const nextValue = clampNumber(
-          value,
-          settings.hitCountMaxScale,
-          1
-        );
-        this.plugin.updateSettings((next) => {
-          next.hitCountMaxScale = Math.floor(nextValue);
+      (text) => text.setPlaceholder("30").setValue(String(settings.minDwellMs / 1e3)).onChange(async (value) => {
+        const parsed = Number.parseFloat(value);
+        await this.plugin.updateSettings((next) => {
+          next.minDwellMs = Number.isNaN(parsed) ? 3e4 : Math.max(0, Math.round(parsed * 1e3));
         });
       })
     );
-    new import_obsidian2.Setting(containerEl).setName("Max records").setDesc(
-      "Maximum number of notes to process or render (0 disables the cap)."
+    new import_obsidian2.Setting(containerEl).setName("Tracked folders").setDesc(
+      "Only track notes in these folders (one folder path per line). Leave blank to track your entire vault."
+    ).addTextArea((area) => {
+      area.setPlaceholder("Projects/\ndaily/").setValue(settings.includedFolders.join("\n")).onChange(async (value) => {
+        await this.plugin.updateSettings((next) => {
+          next.includedFolders = value.split("\n").map((s) => s.trim()).filter(Boolean);
+        });
+      });
+      area.inputEl.rows = 4;
+    });
+    new import_obsidian2.Setting(containerEl).setName("Excluded folders").setDesc(
+      "Never track notes in these folders (one folder path per line)."
+    ).addTextArea((area) => {
+      area.setPlaceholder("Templates/\narchive/").setValue(settings.excludedFolders.join("\n")).onChange(async (value) => {
+        await this.plugin.updateSettings((next) => {
+          next.excludedFolders = value.split("\n").map((s) => s.trim()).filter(Boolean);
+        });
+      });
+      area.inputEl.rows = 4;
+    });
+    const details = containerEl.createEl("details", {
+      cls: "cognitive-glow-advanced-section"
+    });
+    details.createEl("summary", {
+      text: "Advanced",
+      cls: "cognitive-glow-advanced-summary"
+    });
+    new import_obsidian2.Setting(details).setName("Recency weight").setDesc(
+      "How much recent activity contributes to the glow score (0\u20131). Weights are normalized automatically if their sum exceeds 1."
     ).addText(
-      (text) => text.setPlaceholder(String(settings.maxRecords)).setValue(String(settings.maxRecords)).onChange((value) => {
-        const nextValue = clampNumber(
-          value,
-          settings.maxRecords,
-          0
-        );
-        this.plugin.updateSettings((next) => {
-          next.maxRecords = Math.floor(nextValue);
+      (text) => text.setPlaceholder("0.6").setValue(String(settings.weightRecency)).onChange(async (value) => {
+        const v = Number.parseFloat(value);
+        await this.plugin.updateSettings((next) => {
+          next.weightRecency = Number.isNaN(v) ? 0.6 : Math.min(1, Math.max(0, v));
         });
       })
     );
-    new import_obsidian2.Setting(containerEl).setName("Recency weight").setDesc("Weight assigned to recent activity (0 to 1).").addText(
-      (text) => text.setPlaceholder(String(settings.weightRecency)).setValue(String(settings.weightRecency)).onChange((value) => {
-        const nextValue = clampNumber(value, settings.weightRecency, 0, 1);
-        this.plugin.updateSettings((next) => {
-          next.weightRecency = nextValue;
+    new import_obsidian2.Setting(details).setName("Frequency weight").setDesc("How much visit frequency contributes to the glow score (0\u20131).").addText(
+      (text) => text.setPlaceholder("0.4").setValue(String(settings.weightFrequency)).onChange(async (value) => {
+        const v = Number.parseFloat(value);
+        await this.plugin.updateSettings((next) => {
+          next.weightFrequency = Number.isNaN(v) ? 0.4 : Math.min(1, Math.max(0, v));
         });
       })
     );
-    new import_obsidian2.Setting(containerEl).setName("Frequency weight").setDesc("Weight assigned to frequency of opens (0 to 1).").addText(
-      (text) => text.setPlaceholder(String(settings.weightFrequency)).setValue(String(settings.weightFrequency)).onChange((value) => {
-        const nextValue = clampNumber(
-          value,
-          settings.weightFrequency,
-          0,
-          1
-        );
-        this.plugin.updateSettings((next) => {
-          next.weightFrequency = nextValue;
+    new import_obsidian2.Setting(details).setName("Manual pin weight").setDesc(
+      "How much manually pinned notes are boosted in the score (0\u20131). Pin a note via setManualGravity in the API."
+    ).addText(
+      (text) => text.setPlaceholder("0").setValue(String(settings.weightGravity)).onChange(async (value) => {
+        const v = Number.parseFloat(value);
+        await this.plugin.updateSettings((next) => {
+          next.weightGravity = Number.isNaN(v) ? 0 : Math.min(1, Math.max(0, v));
         });
       })
     );
-    new import_obsidian2.Setting(containerEl).setName("Gravity weight").setDesc("Weight assigned to manual importance (0 to 1).").addText(
-      (text) => text.setPlaceholder(String(settings.weightGravity)).setValue(String(settings.weightGravity)).onChange((value) => {
-        const nextValue = clampNumber(
-          value,
-          settings.weightGravity,
-          0,
-          1
-        );
-        this.plugin.updateSettings((next) => {
-          next.weightGravity = nextValue;
+    new import_obsidian2.Setting(details).setName("Frequency scale").setDesc(
+      "The number of opens considered 'maximum frequency' for scoring. Higher values make frequent opens matter less at the top end."
+    ).addText(
+      (text) => text.setPlaceholder("20").setValue(String(settings.hitCountMaxScale)).onChange(async (value) => {
+        const v = Number.parseInt(value, 10);
+        await this.plugin.updateSettings((next) => {
+          next.hitCountMaxScale = Number.isNaN(v) ? 20 : Math.max(1, v);
+        });
+      })
+    );
+    new import_obsidian2.Setting(details).setName("Max tracked notes").setDesc(
+      "Cap on how many notes are kept in memory. 0 = no cap."
+    ).addText(
+      (text) => text.setPlaceholder("3000").setValue(String(settings.maxRecords)).onChange(async (value) => {
+        const v = Number.parseInt(value, 10);
+        await this.plugin.updateSettings((next) => {
+          next.maxRecords = Number.isNaN(v) ? 3e3 : Math.max(0, v);
+        });
+      })
+    );
+    new import_obsidian2.Setting(details).setName("Recency decay (ms)").setDesc(
+      "Raw time constant for the exponential recency decay in milliseconds. Overrides the 'Glow fades after' dropdown."
+    ).addText(
+      (text) => text.setPlaceholder("259200000").setValue(String(settings.tauRecencyMs)).onChange(async (value) => {
+        const v = Number.parseFloat(value);
+        await this.plugin.updateSettings((next) => {
+          next.tauRecencyMs = Number.isNaN(v) ? 2592e5 : Math.max(1, v);
         });
       })
     );

@@ -29,12 +29,18 @@ export class GlowView extends ItemView {
     return "Cognitive glow";
   }
 
-  onOpen(): void {
-    this.render();
+  getIcon(): string {
+    return "sparkles";
   }
 
-  onClose(): void {
+  onOpen(): Promise<void> {
+    this.render();
+    return Promise.resolve();
+  }
+
+  onClose(): Promise<void> {
     this.contentEl.empty();
+    return Promise.resolve();
   }
 
   render(): void {
@@ -89,12 +95,12 @@ export class GlowView extends ItemView {
       records = records.slice(0, topN);
       header.createEl("p", {
         cls: "cognitive-glow-mode",
-        text: `Showing top ${topN} notes by glow score.`,
+        text: `Top ${topN} notes by glow`,
       });
     } else {
       header.createEl("p", {
         cls: "cognitive-glow-mode",
-        text: "Showing all notes by glow score.",
+        text: "All notes by glow score",
       });
     }
 
@@ -104,25 +110,39 @@ export class GlowView extends ItemView {
     }
 
     if (records.length === 0) {
-      list.createEl("p", { text: "No glow stats yet." });
+      list.createEl("p", {
+        cls: "cognitive-glow-empty",
+        text: "No glow data yet — open some notes to get started.",
+      });
       return;
     }
 
     records.forEach((record) => {
       const glowScore = Math.min(1, Math.max(0, record.glowScore));
       const widthPercent = Math.round(glowScore * 100);
-      const opacity = 0.2 + glowScore * 0.8;
+      const opacity = 0.25 + glowScore * 0.75;
+
+      // Extract display name: filename without .md extension
+      const parts = record.path.split("/");
+      const filename = parts[parts.length - 1];
+      const displayName = filename.endsWith(".md")
+        ? filename.slice(0, -3)
+        : filename;
+
       const row = list.createDiv({ cls: "cognitive-glow-row" });
       row.setAttr(
         "style",
-        `width: ${widthPercent}%; opacity: ${opacity};`,
+        `width: ${widthPercent}%; opacity: ${opacity.toFixed(3)}; --glow-score: ${glowScore.toFixed(3)};`,
       );
+      row.setAttr("title", record.path);
       row.addEventListener("click", () => {
-        this.app.workspace.openLinkText(record.path, "", false).catch(() => {});
+        this.app.workspace
+          .openLinkText(record.path, "", false)
+          .catch(() => {});
       });
 
       const label = row.createDiv({ cls: "cognitive-glow-label" });
-      label.setText(record.path);
+      label.setText(displayName);
     });
   }
 }

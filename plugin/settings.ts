@@ -7,6 +7,10 @@ export interface CognitiveGlowSettings {
   focusTopN: number;
   showArchived: boolean;
   maxRecords: number;
+  sidebarSide: "left" | "right";
+  minDwellMs: number;
+  includedFolders: string[];
+  excludedFolders: string[];
 }
 
 export const DEFAULT_SETTINGS: CognitiveGlowSettings = {
@@ -18,4 +22,8 @@ export const DEFAULT_SETTINGS: CognitiveGlowSettings = {
   focusTopN: 5,
   showArchived: true,
   maxRecords: 3000,
+  sidebarSide: "right",
+  minDwellMs: 30000,
+  includedFolders: [],
+  excludedFolders: [],
 };

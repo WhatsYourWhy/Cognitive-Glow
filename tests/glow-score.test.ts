@@ -13,6 +13,10 @@ const config: GlowConfig = {
   focusTopN: 2000,
   showArchived: true,
   maxRecords: 2000,
+  sidebarSide: "right",
+  minDwellMs: 30000,
+  includedFolders: [],
+  excludedFolders: [],
 };
 
 const now = Date.UTC(2024, 0, 15, 12, 0, 0);
