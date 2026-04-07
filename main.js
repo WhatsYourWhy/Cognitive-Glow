@@ -508,7 +508,7 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
         await leaf.setViewState({ type: GLOW_VIEW_TYPE, active: true });
       }
     } else {
-      this.app.workspace.revealLeaf(leaves[0]);
+      void this.app.workspace.revealLeaf(leaves[0]);
     }
     this.refreshViews();
   }
