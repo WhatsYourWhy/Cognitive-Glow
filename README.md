@@ -2,6 +2,8 @@
 
 An Obsidian plugin that surfaces the notes you actually use. Notes you actively visit glow brighter in a ranked sidebar; ones you haven't touched fade out. No tags, no manual curation — just open notes and let the glow tell you where your attention lives.
 
+![Cognitive Glow sidebar](screenshot.png)
+
 ## Why
 
 Most note-taking setups bury active work under search results and folder hierarchies. Cognitive Glow gives you a persistent, at-a-glance view of what matters right now, ranked by a blend of recency and visit frequency.
