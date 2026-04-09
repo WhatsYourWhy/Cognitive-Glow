@@ -299,8 +299,7 @@ var GlowView = class extends import_obsidian.ItemView {
       );
       row.setAttr("title", record.path);
       row.addEventListener("click", () => {
-        this.app.workspace.openLinkText(record.path, "", false).catch(() => {
-        });
+        this.app.workspace.openLinkText(record.path, "", false).catch((e) => console.error("Cognitive Glow: failed to open note", e));
       });
       const label = row.createDiv({ cls: "cognitive-glow-label" });
       label.setText(displayName);
@@ -348,8 +347,7 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
       })
     );
     this.addRibbonIcon("sparkles", "Cognitive glow", () => {
-      this.activateView().catch(() => {
-      });
+      this.activateView().catch((e) => console.error("Cognitive Glow: failed to activate view", e));
     });
     this.registerEvent(
       this.app.workspace.on("file-open", (file) => {
@@ -390,8 +388,7 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
       id: "open-glow-sidebar",
       name: "Open sidebar",
       callback: () => {
-        this.activateView().catch(() => {
-        });
+        this.activateView().catch((e) => console.error("Cognitive Glow: failed to activate view", e));
       }
     });
     this.addCommand({
@@ -413,16 +410,14 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
     });
     this.addSettingTab(new CognitiveGlowSettingTab(this.app, this));
     this.app.workspace.onLayoutReady(() => {
-      this.activateView().catch(() => {
-      });
+      this.activateView().catch((e) => console.error("Cognitive Glow: failed to activate view", e));
     });
   }
   onunload() {
     this.commitPendingOpen(Date.now());
     if (this.saveTimeout != null) {
       window.clearTimeout(this.saveTimeout);
-      this.performSave().catch(() => {
-      });
+      this.performSave().catch((e) => console.error("Cognitive Glow: failed to save data", e));
     }
     this.saveTimeout = null;
   }
@@ -579,8 +574,7 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
       window.clearTimeout(this.saveTimeout);
     }
     this.saveTimeout = window.setTimeout(() => {
-      this.performSave().catch(() => {
-      });
+      this.performSave().catch((e) => console.error("Cognitive Glow: failed to save data", e));
     }, 5e3);
   }
   async performSave() {

@@ -5,8 +5,6 @@ import type {
   StatsIndex,
 } from "./types";
 
-export type { GlowConfig, GlowRecord, NoteStats, StatsIndex } from "./types";
-
 export function updateStatsOnOpen(
   index: StatsIndex,
   path: string,

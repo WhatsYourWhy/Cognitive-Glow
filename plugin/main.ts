@@ -13,15 +13,13 @@ import {
   migrateStatsOnRename,
   removeStatsOnDelete,
   updateStatsOnOpen,
-  type GlowRecord,
-  type StatsIndex,
 } from "../core/metrics";
 import {
   CURRENT_VERSION,
   loadAllStats,
   saveAllStats,
 } from "../core/store";
-import type { PersistedData } from "../core/types";
+import type { GlowRecord, PersistedData, StatsIndex } from "../core/types";
 import {
   DEFAULT_SETTINGS,
   type CognitiveGlowSettings,
@@ -75,7 +73,7 @@ export default class CognitiveGlowPlugin extends Plugin {
     );
 
     this.addRibbonIcon("sparkles", "Cognitive glow", () => {
-      this.activateView().catch(() => {});
+      this.activateView().catch((e: unknown) => console.error("Cognitive Glow: failed to activate view", e));
     });
 
     this.registerEvent(
@@ -118,7 +116,7 @@ export default class CognitiveGlowPlugin extends Plugin {
       id: "open-glow-sidebar",
       name: "Open sidebar",
       callback: () => {
-        this.activateView().catch(() => {});
+        this.activateView().catch((e: unknown) => console.error("Cognitive Glow: failed to activate view", e));
       },
     });
 
@@ -146,7 +144,7 @@ export default class CognitiveGlowPlugin extends Plugin {
     this.addSettingTab(new CognitiveGlowSettingTab(this.app, this));
 
     this.app.workspace.onLayoutReady(() => {
-      this.activateView().catch(() => {});
+      this.activateView().catch((e: unknown) => console.error("Cognitive Glow: failed to activate view", e));
     });
   }
 
@@ -157,7 +155,7 @@ export default class CognitiveGlowPlugin extends Plugin {
     if (this.saveTimeout != null) {
       window.clearTimeout(this.saveTimeout);
       // Flush immediately rather than letting the debounce lapse
-      this.performSave().catch(() => {});
+      this.performSave().catch((e: unknown) => console.error("Cognitive Glow: failed to save data", e));
     }
     this.saveTimeout = null;
   }
@@ -361,7 +359,7 @@ export default class CognitiveGlowPlugin extends Plugin {
       window.clearTimeout(this.saveTimeout);
     }
     this.saveTimeout = window.setTimeout(() => {
-      this.performSave().catch(() => {});
+      this.performSave().catch((e: unknown) => console.error("Cognitive Glow: failed to save data", e));
     }, 5000);
   }
 

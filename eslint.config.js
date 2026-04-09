@@ -106,7 +106,6 @@ export default [
     rules: {
       ...generalRules,
       ...obsidianmdRules,
-      // isDesktopOnly: true in manifest, so allow Node modules on desktop
       "import/no-nodejs-modules": "off",
       "import/no-extraneous-dependencies": "error",
     },
