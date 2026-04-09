@@ -138,7 +138,7 @@ export class GlowView extends ItemView {
       row.addEventListener("click", () => {
         this.app.workspace
           .openLinkText(record.path, "", false)
-          .catch(() => {});
+          .catch((e: unknown) => console.error("Cognitive Glow: failed to open note", e));
       });
 
       const label = row.createDiv({ cls: "cognitive-glow-label" });
