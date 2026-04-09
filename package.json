@@ -11,7 +11,7 @@
   },
   "devDependencies": {
     "@microsoft/eslint-plugin-sdl": "^1.1.0",
-    "cross-env": "^10.1.0",
+    "cross-env": "^7.0.3",
     "esbuild": "^0.27.4",
     "eslint": "^9.39.4",
     "eslint-plugin-import": "^2.32.0",
