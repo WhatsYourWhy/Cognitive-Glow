@@ -20,7 +20,7 @@ function isStatsIndex(value: unknown): value is StatsIndex {
   return (
     isRecord(value) &&
     "notes" in value &&
-    isRecord((value as StatsIndex).notes)
+    isRecord((value as { notes: unknown }).notes)
   );
 }
 

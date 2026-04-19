@@ -110,4 +110,19 @@ export default [
       "import/no-extraneous-dependencies": "error",
     },
   },
+  {
+    // Lint manifest.json as a JS object expression so validate-manifest can
+    // walk its AST. Only the obsidianmd rule applies here.
+    files: ["manifest.json"],
+    plugins: { obsidianmd },
+    languageOptions: {
+      parserOptions: { sourceType: "script" },
+    },
+    rules: {
+      "obsidianmd/validate-manifest": "error",
+      // Silence JS/TS rules that fire on a bare JSON object literal.
+      "no-unused-expressions": "off",
+      "@typescript-eslint/no-unused-expressions": "off",
+    },
+  },
 ];

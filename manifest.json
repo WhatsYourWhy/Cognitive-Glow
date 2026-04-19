@@ -1,9 +1,10 @@
 {
   "id": "cognitive-glow",
   "name": "Cognitive Glow",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "minAppVersion": "1.5.0",
-  "description": "Note activity heatmap/glow sidebar — navigate your vault by visual glow instead of hunting filenames.",
+  "description": "Note activity heatmap in a sidebar. Navigate your vault by visual glow instead of hunting filenames.",
   "author": "Justin Shank",
-  "authorUrl": "https://github.com/WhatsYourWhy"
+  "authorUrl": "https://github.com/WhatsYourWhy",
+  "isDesktopOnly": false
 }
