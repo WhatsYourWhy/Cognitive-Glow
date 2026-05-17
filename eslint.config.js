@@ -2,7 +2,7 @@ import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import obsidianmd from "eslint-plugin-obsidianmd";
 import sdl from "@microsoft/eslint-plugin-sdl";
-import importPlugin from "eslint-plugin-import";
+import importPlugin from "eslint-plugin-import-x";
 
 // Mirror Obsidian plugin recommended rules (full set, no "extends")
 const obsidianmdRules = {
@@ -94,7 +94,7 @@ export default [
     plugins: {
       obsidianmd,
       "@microsoft/sdl": sdl,
-      import: importPlugin,
+      "import-x": importPlugin,
     },
     languageOptions: {
       parserOptions: { project: "./tsconfig.json" },
@@ -106,8 +106,8 @@ export default [
     rules: {
       ...generalRules,
       ...obsidianmdRules,
-      "import/no-nodejs-modules": "off",
-      "import/no-extraneous-dependencies": "error",
+      "import-x/no-nodejs-modules": "off",
+      "import-x/no-extraneous-dependencies": "error",
     },
   },
   {
