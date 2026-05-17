@@ -14,13 +14,20 @@ Releases ship via `.github/workflows/release.yml`. The workflow builds, signs
 the artifacts with GitHub artifact attestations, and uploads `main.js`,
 `styles.css`, and `manifest.json` to the release.
 
+The release workflow runs `lint` + `test` before `build`, so a broken commit
+cannot ship. CI also runs on push-to-main as a second gate.
+
 To cut a release:
 
 1. Bump `version` in BOTH `manifest.json` AND `package.json` (must stay in sync).
-2. Commit: `git commit -m "chore: bump to X.Y.Z"` and push.
-3. Tag (NO `v` prefix — Obsidian convention): `git tag X.Y.Z`.
-4. Push tag: `git push origin X.Y.Z`. Workflow fires automatically.
-5. Verify after green: `gh attestation verify main.js -R WhatsYourWhy/Cognitive-Glow`.
+2. Add an entry to `versions.json` mapping the new version to its
+   `minAppVersion` (e.g. `"0.3.0": "1.5.0"`). Required for Obsidian to install
+   the correct version on users running older Obsidian releases. Do this even
+   if `minAppVersion` hasn't changed — the file's history must be continuous.
+3. Commit: `git commit -m "chore: bump to X.Y.Z"` and push.
+4. Tag (NO `v` prefix — Obsidian convention): `git tag X.Y.Z`.
+5. Push tag: `git push origin X.Y.Z`. Workflow fires automatically.
+6. Verify after green: `gh attestation verify main.js -R WhatsYourWhy/Cognitive-Glow`.
 
 **Never** upload `main.js` / `styles.css` to a release by hand. That overwrites
 the attested artifacts and re-introduces the "no attestation" submission warning.

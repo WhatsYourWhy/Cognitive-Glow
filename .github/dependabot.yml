@@ -1,0 +1,20 @@
+version: 2
+updates:
+  # Keep npm dependencies up to date.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      # Group dev tooling bumps to reduce PR noise.
+      dev-dependencies:
+        dependency-type: "development"
+
+  # Keep GitHub Actions versions current — important for the signed-release
+  # supply chain (actions/checkout, attest-build-provenance, action-gh-release).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
