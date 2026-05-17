@@ -51,6 +51,9 @@ jobs:
           name: ${{ github.ref_name }}
           draft: false
           prerelease: false
+          # Auto-generate release notes from commits/PRs since the last tag.
+          # Override or supplement by adding `body:` or `body_path:` here.
+          generate_release_notes: true
           # manifest.json must be attached for Obsidian's plugin updater.
           files: |
             main.js
