@@ -12,7 +12,7 @@
   "devDependencies": {
     "@microsoft/eslint-plugin-sdl": "^1.1.0",
     "cross-env": "^7.0.3",
-    "esbuild": "^0.27.4",
+    "esbuild": "^0.28.1",
     "eslint": "^9.39.4",
     "eslint-plugin-import-x": "^4.16.2",
     "eslint-plugin-obsidianmd": "^0.1.9",
