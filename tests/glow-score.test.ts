@@ -63,3 +63,22 @@ test("computeGlowScore uses fallback mtime when lastOpened is missing", () => {
   const actual = computeGlowScore(stats, config, now, fallbackMtime);
   assert.ok(Math.abs(actual - expected) < 1e-9);
 });
+
+test("a pin-only note (never opened) earns no recency glow", () => {
+  // hitCount 0 + lastOpened seeded to now: must NOT score as recently opened.
+  const stats: NoteStats = {
+    path: "notes/pinned.md",
+    hitCount: 0,
+    lastOpened: now,
+    manualGravity: 1,
+  };
+
+  // weightGravity 0 (default): the pin is inert, score is 0.
+  assert.equal(computeGlowScore(stats, config, now), 0);
+
+  // weightGravity > 0: score is exactly the gravity contribution, no recency.
+  const withGravity = { ...config, weightGravity: 0.5 };
+  assert.ok(
+    Math.abs(computeGlowScore(stats, withGravity, now) - 0.5) < 1e-9,
+  );
+});

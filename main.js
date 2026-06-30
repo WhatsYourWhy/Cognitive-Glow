@@ -64,7 +64,7 @@ function computeGlowScore(stats, config, now, fallbackMtime) {
   var _a, _b;
   const recencyAnchor = (_b = (_a = stats.lastOpened) != null ? _a : fallbackMtime) != null ? _b : now;
   const dt = Math.max(0, now - recencyAnchor);
-  const recency = Math.exp(-dt / config.tauRecencyMs);
+  const recency = stats.hitCount > 0 ? Math.exp(-dt / config.tauRecencyMs) : 0;
   const denom = Math.log(1 + config.hitCountMaxScale);
   const freq = denom > 0 ? Math.log(1 + stats.hitCount) / denom : 0;
   const gravity = typeof stats.manualGravity === "number" ? clamp(0, 1, stats.manualGravity) : 0;
@@ -465,19 +465,24 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
     return this.settings;
   }
   setManualGravity(path, value) {
-    var _a;
     if (!Number.isFinite(value)) {
       return;
     }
     const clamped = Math.max(0, Math.min(1, value));
-    const now = Date.now();
-    const existing = (_a = this.stats.notes[path]) != null ? _a : {
-      path,
-      hitCount: 0,
-      lastOpened: now
-    };
-    existing.manualGravity = clamped;
-    this.stats.notes[path] = existing;
+    const existing = this.stats.notes[path];
+    if (existing) {
+      existing.manualGravity = clamped;
+      if (existing.hitCount === 0 && clamped === 0) {
+        delete this.stats.notes[path];
+      }
+    } else if (clamped > 0) {
+      this.stats.notes[path] = {
+        path,
+        hitCount: 0,
+        lastOpened: Date.now(),
+        manualGravity: clamped
+      };
+    }
     this.scheduleSave();
     this.refreshViews();
   }

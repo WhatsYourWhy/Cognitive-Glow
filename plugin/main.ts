@@ -226,14 +226,24 @@ export default class CognitiveGlowPlugin extends Plugin {
       return;
     }
     const clamped = Math.max(0, Math.min(1, value));
-    const now = Date.now();
-    const existing = this.stats.notes[path] ?? {
-      path,
-      hitCount: 0,
-      lastOpened: now,
-    };
-    existing.manualGravity = clamped;
-    this.stats.notes[path] = existing;
+    const existing = this.stats.notes[path];
+    if (existing) {
+      existing.manualGravity = clamped;
+      // Drop records that no longer carry any signal: never opened and unpinned.
+      if (existing.hitCount === 0 && clamped === 0) {
+        delete this.stats.notes[path];
+      }
+    } else if (clamped > 0) {
+      // New pin-only record: no open history. hitCount stays 0 so scoring
+      // contributes no recency — the pin's only effect is via gravity weight.
+      this.stats.notes[path] = {
+        path,
+        hitCount: 0,
+        lastOpened: Date.now(),
+        manualGravity: clamped,
+      };
+    }
+    // Unpinning a note with no record is a no-op.
     this.scheduleSave();
     this.refreshViews();
   }
