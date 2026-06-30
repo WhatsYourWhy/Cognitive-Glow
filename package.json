@@ -1,6 +1,6 @@
 {
   "name": "cognitive-glow",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,14 +10,16 @@
     "test": "cross-env TS_NODE_PROJECT=tsconfig.test.json TS_NODE_TRANSPILE_ONLY=1 node --test --loader ts-node/esm tests/glow-score.test.ts"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@microsoft/eslint-plugin-sdl": "^1.1.0",
     "cross-env": "^7.0.3",
     "esbuild": "^0.28.1",
     "eslint": "^9.39.4",
     "eslint-plugin-import-x": "^4.16.2",
-    "eslint-plugin-obsidianmd": "^0.1.9",
+    "eslint-plugin-obsidianmd": "^0.3.0",
     "obsidian": "^1.12.3",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "typescript-eslint": "^8.57.1"
   }
 }
