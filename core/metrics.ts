@@ -58,10 +58,13 @@ export function computeGlowScore(
   now: number,
   fallbackMtime?: number,
 ): number {
-  // Spec 3.2: fall back to mtime when lastOpened is missing.
+  // A note that was never opened (hitCount 0 — e.g. a pin-only record) has no
+  // open-recency, so it must not borrow recency glow from a synthetic anchor.
+  // Spec 3.2: otherwise fall back to mtime when lastOpened is missing.
   const recencyAnchor = stats.lastOpened ?? fallbackMtime ?? now;
   const dt = Math.max(0, now - recencyAnchor);
-  const recency = Math.exp(-dt / config.tauRecencyMs);
+  const recency =
+    stats.hitCount > 0 ? Math.exp(-dt / config.tauRecencyMs) : 0;
   const denom = Math.log(1 + config.hitCountMaxScale);
   const freq = denom > 0 ? Math.log(1 + stats.hitCount) / denom : 0;
   const gravity =

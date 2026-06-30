@@ -64,7 +64,7 @@ function computeGlowScore(stats, config, now, fallbackMtime) {
   var _a, _b;
   const recencyAnchor = (_b = (_a = stats.lastOpened) != null ? _a : fallbackMtime) != null ? _b : now;
   const dt = Math.max(0, now - recencyAnchor);
-  const recency = Math.exp(-dt / config.tauRecencyMs);
+  const recency = stats.hitCount > 0 ? Math.exp(-dt / config.tauRecencyMs) : 0;
   const denom = Math.log(1 + config.hitCountMaxScale);
   const freq = denom > 0 ? Math.log(1 + stats.hitCount) / denom : 0;
   const gravity = typeof stats.manualGravity === "number" ? clamp(0, 1, stats.manualGravity) : 0;
@@ -287,16 +287,11 @@ var GlowView = class extends import_obsidian.ItemView {
     }
     records.forEach((record) => {
       const glowScore = Math.min(1, Math.max(0, record.glowScore));
-      const widthPercent = Math.round(glowScore * 100);
-      const opacity = 0.25 + glowScore * 0.75;
       const parts = record.path.split("/");
       const filename = parts[parts.length - 1];
       const displayName = filename.endsWith(".md") ? filename.slice(0, -3) : filename;
       const row = list.createDiv({ cls: "cognitive-glow-row" });
-      row.setAttr(
-        "style",
-        `width: ${widthPercent}%; opacity: ${opacity.toFixed(3)}; --glow-score: ${glowScore.toFixed(3)};`
-      );
+      row.style.setProperty("--glow-score", glowScore.toFixed(3));
       row.setAttr("title", record.path);
       row.addEventListener("click", () => {
         this.app.workspace.openLinkText(record.path, "", false).catch((e) => console.error("Cognitive Glow: failed to open note", e));
@@ -408,6 +403,31 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
         new PersistedDataModal(this.app, serialized).open();
       }
     });
+    this.addCommand({
+      id: "toggle-pin-active-note",
+      name: "Pin or unpin active note",
+      checkCallback: (checking) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!file) {
+          return false;
+        }
+        if (!checking) {
+          this.togglePin(file.path);
+        }
+        return true;
+      }
+    });
+    this.registerEvent(
+      this.app.workspace.on("file-menu", (menu, file) => {
+        if (!(file instanceof import_obsidian2.TFile) || file.extension !== "md") {
+          return;
+        }
+        const pinned = this.isPinned(file.path);
+        menu.addItem(
+          (item) => item.setTitle(pinned ? "Unpin from glow" : "Pin for glow").setIcon("sparkles").onClick(() => this.togglePin(file.path))
+        );
+      })
+    );
     this.addSettingTab(new CognitiveGlowSettingTab(this.app, this));
     this.app.workspace.onLayoutReady(() => {
       this.activateView().catch((e) => console.error("Cognitive Glow: failed to activate view", e));
@@ -445,19 +465,24 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
     return this.settings;
   }
   setManualGravity(path, value) {
-    var _a;
     if (!Number.isFinite(value)) {
       return;
     }
     const clamped = Math.max(0, Math.min(1, value));
-    const now = Date.now();
-    const existing = (_a = this.stats.notes[path]) != null ? _a : {
-      path,
-      hitCount: 0,
-      lastOpened: now
-    };
-    existing.manualGravity = clamped;
-    this.stats.notes[path] = existing;
+    const existing = this.stats.notes[path];
+    if (existing) {
+      existing.manualGravity = clamped;
+      if (existing.hitCount === 0 && clamped === 0) {
+        delete this.stats.notes[path];
+      }
+    } else if (clamped > 0) {
+      this.stats.notes[path] = {
+        path,
+        hitCount: 0,
+        lastOpened: Date.now(),
+        manualGravity: clamped
+      };
+    }
     this.scheduleSave();
     this.refreshViews();
   }
@@ -510,22 +535,39 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
   /** Returns true if this path should be tracked per current folder settings. */
   isPathTracked(path) {
     const { includedFolders, excludedFolders } = this.settings;
-    for (const folder of excludedFolders) {
-      const prefix = folder.endsWith("/") ? folder : `${folder}/`;
-      if (path.startsWith(prefix) || path === folder) {
+    const matchesFolder = (folder) => {
+      const normalized = (0, import_obsidian2.normalizePath)(folder);
+      if (normalized === "" || normalized === "/") {
         return false;
       }
-    }
-    if (includedFolders.length > 0) {
-      for (const folder of includedFolders) {
-        const prefix = folder.endsWith("/") ? folder : `${folder}/`;
-        if (path.startsWith(prefix) || path === folder) {
-          return true;
-        }
-      }
+      return path === normalized || path.startsWith(`${normalized}/`);
+    };
+    if (excludedFolders.some(matchesFolder)) {
       return false;
     }
+    if (includedFolders.length > 0) {
+      return includedFolders.some(matchesFolder);
+    }
     return true;
+  }
+  /** A note is "pinned" when it carries a positive manual gravity boost. */
+  isPinned(path) {
+    const stats = this.stats.notes[path];
+    return stats !== void 0 && typeof stats.manualGravity === "number" && stats.manualGravity > 0;
+  }
+  /** Toggle the pin state of a note, with a hint if pins are currently inert. */
+  togglePin(path) {
+    const pinned = this.isPinned(path);
+    this.setManualGravity(path, pinned ? 0 : 1);
+    if (pinned) {
+      new import_obsidian2.Notice("Cognitive glow: note unpinned.");
+    } else if (this.settings.weightGravity === 0) {
+      new import_obsidian2.Notice(
+        "Cognitive glow: note pinned. Raise the manual pin weight in advanced settings for pins to affect glow."
+      );
+    } else {
+      new import_obsidian2.Notice("Cognitive glow: note pinned.");
+    }
   }
   cancelDwellTimer() {
     if (this.dwellTimer !== null) {

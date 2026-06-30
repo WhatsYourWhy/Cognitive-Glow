@@ -119,8 +119,6 @@ export class GlowView extends ItemView {
 
     records.forEach((record) => {
       const glowScore = Math.min(1, Math.max(0, record.glowScore));
-      const widthPercent = Math.round(glowScore * 100);
-      const opacity = 0.25 + glowScore * 0.75;
 
       // Extract display name: filename without .md extension
       const parts = record.path.split("/");
@@ -130,10 +128,9 @@ export class GlowView extends ItemView {
         : filename;
 
       const row = list.createDiv({ cls: "cognitive-glow-row" });
-      row.setAttr(
-        "style",
-        `width: ${widthPercent}%; opacity: ${opacity.toFixed(3)}; --glow-score: ${glowScore.toFixed(3)};`,
-      );
+      // Drive width/opacity/glow from a single CSS custom property so all
+      // styling lives in styles.css (per Obsidian styling guidance).
+      row.style.setProperty("--glow-score", glowScore.toFixed(3));
       row.setAttr("title", record.path);
       row.addEventListener("click", () => {
         this.app.workspace

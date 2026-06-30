@@ -1,10 +1,12 @@
 import {
   App,
   Modal,
+  Notice,
   Plugin,
   PluginSettingTab,
   Setting,
   TFile,
+  normalizePath,
   type WorkspaceLeaf,
 } from "obsidian";
 
@@ -141,6 +143,36 @@ export default class CognitiveGlowPlugin extends Plugin {
       },
     });
 
+    this.addCommand({
+      id: "toggle-pin-active-note",
+      name: "Pin or unpin active note",
+      checkCallback: (checking: boolean) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!file) {
+          return false;
+        }
+        if (!checking) {
+          this.togglePin(file.path);
+        }
+        return true;
+      },
+    });
+
+    this.registerEvent(
+      this.app.workspace.on("file-menu", (menu, file) => {
+        if (!(file instanceof TFile) || file.extension !== "md") {
+          return;
+        }
+        const pinned = this.isPinned(file.path);
+        menu.addItem((item) =>
+          item
+            .setTitle(pinned ? "Unpin from glow" : "Pin for glow")
+            .setIcon("sparkles")
+            .onClick(() => this.togglePin(file.path)),
+        );
+      }),
+    );
+
     this.addSettingTab(new CognitiveGlowSettingTab(this.app, this));
 
     this.app.workspace.onLayoutReady(() => {
@@ -194,14 +226,24 @@ export default class CognitiveGlowPlugin extends Plugin {
       return;
     }
     const clamped = Math.max(0, Math.min(1, value));
-    const now = Date.now();
-    const existing = this.stats.notes[path] ?? {
-      path,
-      hitCount: 0,
-      lastOpened: now,
-    };
-    existing.manualGravity = clamped;
-    this.stats.notes[path] = existing;
+    const existing = this.stats.notes[path];
+    if (existing) {
+      existing.manualGravity = clamped;
+      // Drop records that no longer carry any signal: never opened and unpinned.
+      if (existing.hitCount === 0 && clamped === 0) {
+        delete this.stats.notes[path];
+      }
+    } else if (clamped > 0) {
+      // New pin-only record: no open history. hitCount stays 0 so scoring
+      // contributes no recency — the pin's only effect is via gravity weight.
+      this.stats.notes[path] = {
+        path,
+        hitCount: 0,
+        lastOpened: Date.now(),
+        manualGravity: clamped,
+      };
+    }
+    // Unpinning a note with no record is a no-op.
     this.scheduleSave();
     this.refreshViews();
   }
@@ -274,26 +316,53 @@ export default class CognitiveGlowPlugin extends Plugin {
   private isPathTracked(path: string): boolean {
     const { includedFolders, excludedFolders } = this.settings;
 
-    // Exclusions take priority
-    for (const folder of excludedFolders) {
-      const prefix = folder.endsWith("/") ? folder : `${folder}/`;
-      if (path.startsWith(prefix) || path === folder) {
+    // Normalize user-typed folder paths so backslashes, redundant slashes,
+    // and stray whitespace match the vault's forward-slash paths. Obsidian's
+    // submission review flags raw, unnormalized user paths.
+    const matchesFolder = (folder: string): boolean => {
+      const normalized = normalizePath(folder);
+      if (normalized === "" || normalized === "/") {
         return false;
       }
+      return path === normalized || path.startsWith(`${normalized}/`);
+    };
+
+    // Exclusions take priority
+    if (excludedFolders.some(matchesFolder)) {
+      return false;
     }
 
     // If inclusions are specified, path must match at least one
     if (includedFolders.length > 0) {
-      for (const folder of includedFolders) {
-        const prefix = folder.endsWith("/") ? folder : `${folder}/`;
-        if (path.startsWith(prefix) || path === folder) {
-          return true;
-        }
-      }
-      return false;
+      return includedFolders.some(matchesFolder);
     }
 
     return true;
+  }
+
+  /** A note is "pinned" when it carries a positive manual gravity boost. */
+  private isPinned(path: string): boolean {
+    const stats = this.stats.notes[path];
+    return (
+      stats !== undefined &&
+      typeof stats.manualGravity === "number" &&
+      stats.manualGravity > 0
+    );
+  }
+
+  /** Toggle the pin state of a note, with a hint if pins are currently inert. */
+  private togglePin(path: string): void {
+    const pinned = this.isPinned(path);
+    this.setManualGravity(path, pinned ? 0 : 1);
+    if (pinned) {
+      new Notice("Cognitive glow: note unpinned.");
+    } else if (this.settings.weightGravity === 0) {
+      new Notice(
+        "Cognitive glow: note pinned. Raise the manual pin weight in advanced settings for pins to affect glow.",
+      );
+    } else {
+      new Notice("Cognitive glow: note pinned.");
+    }
   }
 
   private cancelDwellTimer(): void {

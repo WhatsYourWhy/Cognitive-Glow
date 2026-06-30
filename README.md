@@ -19,9 +19,10 @@ Most note-taking setups bury active work under search results and folder hierarc
 
 ## Installation
 
-### From community plugins (pending review)
+### From community plugins
 
-Search for **Cognitive Glow** in Settings > Community plugins.
+In Obsidian, go to Settings > Community plugins > Browse, search for
+**Cognitive Glow**, and install.
 
 ### Manual
 
@@ -74,8 +75,13 @@ Copy `manifest.json`, `main.js`, and `styles.css` into `.obsidian/plugins/cognit
 | Command | Description |
 |---|---|
 | Open sidebar | Opens or reveals the Cognitive Glow panel. |
+| Pin or unpin active note | Toggles a manual glow boost on the current note (also on the file right-click menu). |
 | Dump glow scores to console | Logs the top 20 notes by score (dev console). |
 | Show persisted data (JSON) | Opens a modal with the full saved payload. |
+
+> **Pinning:** a pin sets the note's manual gravity to its maximum. Pins only
+> affect the score when **Manual pin weight** (Advanced settings) is above 0 —
+> it defaults to 0, so raise it first if you want pins to glow.
 
 ## How scoring works
 
