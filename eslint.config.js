@@ -20,6 +20,7 @@ const obsidianmdRules = {
   "obsidianmd/no-plugin-as-component": "error",
   "obsidianmd/no-sample-code": "error",
   "obsidianmd/no-tfile-tfolder-cast": "error",
+  "obsidianmd/no-unsupported-api": "error",
   "obsidianmd/no-view-references-in-plugin": "error",
   "obsidianmd/no-static-styles-assignment": "error",
   "obsidianmd/object-assign": "error",
