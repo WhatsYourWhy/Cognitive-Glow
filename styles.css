@@ -73,6 +73,11 @@
   cursor: pointer;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 
+  /* Bar width and luminance both scale with the per-row --glow-score
+     custom property set in glowView.ts (kept out of inline styles). */
+  width: calc(var(--glow-score, 0) * 100%);
+  opacity: calc(0.25 + var(--glow-score, 0) * 0.75);
+
   /* Glow: outer aura + inner luminance */
   box-shadow:
     0 0 calc(var(--glow-score, 0) * 12px) calc(var(--glow-score, 0) * 3px)

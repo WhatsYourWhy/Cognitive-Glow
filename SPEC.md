@@ -52,6 +52,9 @@ For each note:
 
 ## Commands
 
+- `Open sidebar`
+- `Pin or unpin active note` (toggles `manualGravity` between 1 and 0; also
+  exposed via the file right-click menu)
 - `Dump Glow Scores to Console`
 - `Show Persisted Data (JSON)`
 
@@ -69,5 +72,8 @@ For each note:
 ## Not implemented in current code
 
 - Spatial heatmap/grid layout
-- UI controls for editing manual gravity
 - Explainability tooltips for score breakdown
+
+Manual gravity is editable via the `Pin or unpin active note` command and the
+file context menu (sets `manualGravity` to 1 or 0). User-typed include/exclude
+folder paths are run through Obsidian's `normalizePath()` before matching.
