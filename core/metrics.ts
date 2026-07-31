@@ -52,12 +52,18 @@ function clamp(min: number, max: number, value: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-export function computeGlowScore(
+export interface GlowComponents {
+  recency: number;
+  frequency: number;
+  gravity: number;
+}
+
+export function computeGlowComponents(
   stats: NoteStats,
   config: GlowConfig,
   now: number,
   fallbackMtime?: number,
-): number {
+): GlowComponents {
   // A note that was never opened (hitCount 0 — e.g. a pin-only record) has no
   // open-recency, so it must not borrow recency glow from a synthetic anchor.
   // Spec 3.2: otherwise fall back to mtime when lastOpened is missing.
@@ -66,16 +72,31 @@ export function computeGlowScore(
   const recency =
     stats.hitCount > 0 ? Math.exp(-dt / config.tauRecencyMs) : 0;
   const denom = Math.log(1 + config.hitCountMaxScale);
-  const freq = denom > 0 ? Math.log(1 + stats.hitCount) / denom : 0;
+  const frequency = denom > 0 ? Math.log(1 + stats.hitCount) / denom : 0;
   const gravity =
     typeof stats.manualGravity === "number"
       ? clamp(0, 1, stats.manualGravity)
       : 0;
+  return { recency, frequency, gravity };
+}
+
+export function computeGlowScore(
+  stats: NoteStats,
+  config: GlowConfig,
+  now: number,
+  fallbackMtime?: number,
+): number {
+  const { recency, frequency, gravity } = computeGlowComponents(
+    stats,
+    config,
+    now,
+    fallbackMtime,
+  );
   return clamp(
     0,
     1,
     config.weightRecency * recency +
-      config.weightFrequency * freq +
+      config.weightFrequency * frequency +
       config.weightGravity * gravity,
   );
 }
@@ -86,13 +107,25 @@ export function computeAllGlowRecords(
   now: number,
   fallbackMtimeForPath?: (path: string) => number | undefined,
 ): GlowRecord[] {
-  return Object.values(index.notes).map((stats) => ({
-    path: stats.path,
-    glowScore: computeGlowScore(
+  return Object.values(index.notes).map((stats) => {
+    const fallbackMtime = fallbackMtimeForPath?.(stats.path);
+    const { recency, frequency, gravity } = computeGlowComponents(
       stats,
       config,
       now,
-      fallbackMtimeForPath?.(stats.path),
-    ),
-  }));
+      fallbackMtime,
+    );
+    return {
+      path: stats.path,
+      glowScore: clamp(
+        0,
+        1,
+        config.weightRecency * recency +
+          config.weightFrequency * frequency +
+          config.weightGravity * gravity,
+      ),
+      recency,
+      frequency,
+    };
+  });
 }

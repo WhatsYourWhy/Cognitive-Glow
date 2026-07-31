@@ -60,30 +60,36 @@ function removeStatsOnDelete(index, path) {
 function clamp(min, max, value) {
   return Math.min(max, Math.max(min, value));
 }
-function computeGlowScore(stats, config, now, fallbackMtime) {
+function computeGlowComponents(stats, config, now, fallbackMtime) {
   var _a, _b;
   const recencyAnchor = (_b = (_a = stats.lastOpened) != null ? _a : fallbackMtime) != null ? _b : now;
   const dt = Math.max(0, now - recencyAnchor);
   const recency = stats.hitCount > 0 ? Math.exp(-dt / config.tauRecencyMs) : 0;
   const denom = Math.log(1 + config.hitCountMaxScale);
-  const freq = denom > 0 ? Math.log(1 + stats.hitCount) / denom : 0;
+  const frequency = denom > 0 ? Math.log(1 + stats.hitCount) / denom : 0;
   const gravity = typeof stats.manualGravity === "number" ? clamp(0, 1, stats.manualGravity) : 0;
-  return clamp(
-    0,
-    1,
-    config.weightRecency * recency + config.weightFrequency * freq + config.weightGravity * gravity
-  );
+  return { recency, frequency, gravity };
 }
 function computeAllGlowRecords(index, config, now, fallbackMtimeForPath) {
-  return Object.values(index.notes).map((stats) => ({
-    path: stats.path,
-    glowScore: computeGlowScore(
+  return Object.values(index.notes).map((stats) => {
+    const fallbackMtime = fallbackMtimeForPath == null ? void 0 : fallbackMtimeForPath(stats.path);
+    const { recency, frequency, gravity } = computeGlowComponents(
       stats,
       config,
       now,
-      fallbackMtimeForPath == null ? void 0 : fallbackMtimeForPath(stats.path)
-    )
-  }));
+      fallbackMtime
+    );
+    return {
+      path: stats.path,
+      glowScore: clamp(
+        0,
+        1,
+        config.weightRecency * recency + config.weightFrequency * frequency + config.weightGravity * gravity
+      ),
+      recency,
+      frequency
+    };
+  });
 }
 
 // core/store.ts
@@ -224,6 +230,7 @@ var GlowView = class extends import_obsidian.ItemView {
     const { getRecords, getSettings } = this.options;
     const container = this.contentEl;
     container.empty();
+    container.addClass("cognitive-glow-panel");
     const settings = getSettings();
     const header = container.createDiv({ cls: "cognitive-glow-header" });
     header.createEl("h3", { text: "Cognitive glow" });
@@ -285,13 +292,28 @@ var GlowView = class extends import_obsidian.ItemView {
       });
       return;
     }
-    records.forEach((record) => {
-      const glowScore = Math.min(1, Math.max(0, record.glowScore));
+    const scores = records.map((r) => Math.min(1, Math.max(0, r.glowScore)));
+    const minScore = Math.min(...scores);
+    const maxScore = Math.max(...scores);
+    const range = maxScore - minScore;
+    records.forEach((record, i) => {
+      const glowScore = scores[i];
+      const intensity = range > 1e-6 ? (glowScore - minScore) / range : 1;
+      const recency = Math.min(1, Math.max(0, record.recency));
+      let warmth = 0;
+      if (recency > 0) {
+        const ageInTau = -Math.log(recency);
+        warmth = Math.max(0, 1 - Math.log(1 + ageInTau) / Math.log(31));
+      }
+      const frequency = Math.min(1, Math.max(0, record.frequency));
       const parts = record.path.split("/");
       const filename = parts[parts.length - 1];
       const displayName = filename.endsWith(".md") ? filename.slice(0, -3) : filename;
       const row = list.createDiv({ cls: "cognitive-glow-row" });
-      row.style.setProperty("--glow-score", glowScore.toFixed(3));
+      row.style.setProperty("--glow-intensity", intensity.toFixed(3));
+      row.style.setProperty("--glow-warmth", warmth.toFixed(3));
+      row.style.setProperty("--glow-freq", frequency.toFixed(3));
+      row.toggleClass("is-hot", warmth >= 0.7);
       row.setAttr("title", record.path);
       row.addEventListener("click", () => {
         this.app.workspace.openLinkText(record.path, "", false).catch((e) => console.error("Cognitive Glow: failed to open note", e));

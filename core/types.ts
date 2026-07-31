@@ -29,6 +29,10 @@ export interface GlowConfig {
 export interface GlowRecord {
   path: string;
   glowScore: number;
+  /** Raw recency component (0-1) before weighting — drives ember warmth. */
+  recency: number;
+  /** Raw frequency component (0-1) before weighting — drives row size. */
+  frequency: number;
 }
 
 export interface PersistedData {

@@ -1,3 +1,17 @@
+/* ── Panel ground ────────────────────────────────────────── */
+
+/* Glow is a relationship, not a color: the rows can only burn if the
+   ground behind them is darker than the sidebar around it. */
+.cognitive-glow-panel {
+  background: color-mix(in oklab, var(--background-secondary) 72%, black);
+}
+
+/* Light themes get dusk, not night — enough depth for embers to read
+   without turning the panel into a hole in the workspace. */
+.theme-light .cognitive-glow-panel {
+  background: color-mix(in oklab, var(--background-secondary) 86%, #4a3a28);
+}
+
 /* ── Header ──────────────────────────────────────────────── */
 
 .cognitive-glow-header {
@@ -61,34 +75,81 @@
 
 /* ── Glow Rows ───────────────────────────────────────────── */
 
+/* Three per-row channels set by glowView.ts:
+     --glow-intensity  score stretched across the visible list → presence
+     --glow-warmth     raw recency (gamma-corrected)           → temperature
+     --glow-freq       frequency component                     → width
+   Temperature does the painting: fresh notes burn white-gold, aging ones
+   cool through amber to ash. The ember palette is self-contained (not
+   theme-derived) so contrast stays guaranteed under any theme. */
+
 .cognitive-glow-row {
+  --ember-hot: #ffe9a8;
+  --ember-warm: #e78a3e;
+  --ember-ash: #57534e;
+
+  /* Amber → ash ramp for everything below ignition. The white-gold
+     --ember-hot only enters on .is-hot rows (set by glowView.ts at
+     warmth ≥ 0.7) so the background never drifts light under light text. */
+  --heat-inner: color-mix(
+    in oklab,
+    var(--ember-warm) calc(var(--glow-warmth, 0) * 85%),
+    var(--ember-ash)
+  );
+  --heat-color: var(--heat-inner);
+
   position: relative;
   display: flex;
   align-items: center;
   min-height: 1.9rem;
   padding: 0.25rem 0.6rem;
   border-radius: 8px;
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
+
+  /* Lit from the left: the core of the ember, cooling toward the tip. */
+  background: linear-gradient(
+    90deg,
+    var(--heat-color),
+    color-mix(in oklab, var(--heat-color) 62%, transparent)
+  );
+
+  color: #ece9e4;
+
   cursor: pointer;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 
-  /* Bar width and luminance both scale with the per-row --glow-score
-     custom property set in glowView.ts (kept out of inline styles). */
-  width: calc(var(--glow-score, 0) * 100%);
-  opacity: calc(0.25 + var(--glow-score, 0) * 0.75);
+  /* Frequency owns width; a floor keeps every label legible. */
+  width: calc(42% + var(--glow-freq, 0) * 58%);
 
-  /* Glow: outer aura + inner luminance */
+  /* Intensity owns presence — the floor is low enough that the bottom of
+     the list reads as embers in ash, but every row stays clickable. */
+  opacity: calc(0.55 + var(--glow-intensity, 0) * 0.45);
+
+  /* Only warm rows emit light: the aura needs both rank and recency.
+     A cold note at the top of the list is ash — present, but unlit. */
   box-shadow:
-    0 0 calc(var(--glow-score, 0) * 12px) calc(var(--glow-score, 0) * 3px)
-      var(--interactive-accent),
-    inset 0 0 calc(var(--glow-score, 0) * 10px) rgba(255, 255, 255, 0.18),
-    0 1px 3px rgba(0, 0, 0, 0.2);
+    0 0
+      calc(var(--glow-intensity, 0) * var(--glow-warmth, 0) * 16px)
+      calc(var(--glow-intensity, 0) * var(--glow-warmth, 0) * 4px)
+      color-mix(in srgb, var(--heat-color) 65%, transparent),
+    inset 0 0 calc(var(--glow-intensity, 0) * 10px)
+      rgba(255, 255, 255, 0.15),
+    0 1px 3px rgba(0, 0, 0, 0.25);
 
   transition: transform 150ms ease, filter 150ms ease, box-shadow 150ms ease;
 }
 
-/* Shimmer overlay: light appears to hit the bar from the left */
+/* Ignition: at warmth ≥ 0.7 the note catches — white-gold ground, dark
+   text. warmth² keeps pure white-gold reserved for the truly fresh. */
+.cognitive-glow-row.is-hot {
+  --heat-color: color-mix(
+    in oklab,
+    var(--ember-hot)
+      calc(var(--glow-warmth, 0) * var(--glow-warmth, 0) * 100%),
+    var(--heat-inner)
+  );
+  color: #2b1c06;
+}
+
+/* Inner shimmer: light concentrating at the ember's core. */
 .cognitive-glow-row::after {
   content: "";
   position: absolute;
@@ -96,21 +157,27 @@
   border-radius: inherit;
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, calc(var(--glow-score, 0) * 0.22)) 0%,
-    rgba(255, 255, 255, 0.04) 55%,
-    transparent 100%
+    rgba(
+      255, 255, 255,
+      calc(var(--glow-intensity, 0) * var(--glow-warmth, 0) * 0.25)
+    )
+    0%,
+    transparent 60%
   );
   pointer-events: none;
 }
 
 .cognitive-glow-row:hover {
   transform: translateX(2px);
-  filter: brightness(1.1) saturate(1.15);
+  filter: brightness(1.08) saturate(1.1);
   box-shadow:
-    0 0 calc(var(--glow-score, 0) * 16px + 4px) calc(var(--glow-score, 0) * 4px + 1px)
-      var(--interactive-accent),
-    inset 0 0 calc(var(--glow-score, 0) * 12px) rgba(255, 255, 255, 0.25),
-    0 2px 6px rgba(0, 0, 0, 0.25);
+    0 0
+      calc(var(--glow-intensity, 0) * var(--glow-warmth, 0) * 20px + 3px)
+      calc(var(--glow-intensity, 0) * var(--glow-warmth, 0) * 5px + 1px)
+      color-mix(in srgb, var(--heat-color) 75%, transparent),
+    inset 0 0 calc(var(--glow-intensity, 0) * 12px)
+      rgba(255, 255, 255, 0.22),
+    0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 .cognitive-glow-label {

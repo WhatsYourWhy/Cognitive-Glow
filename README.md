@@ -10,7 +10,7 @@ Most note-taking setups bury active work under search results and folder hierarc
 
 ## Features
 
-- **Visual glow** — each note gets a luminous bar proportional to its score. High-activity notes shine; old ones dim.
+- **Visual glow** — notes render as embers on a darkened ground. Freshly visited notes ignite white-gold; aging ones cool through amber to ash. Row width tracks visit frequency, brightness tracks rank, and color temperature tracks how recently you were there — three signals you can read at a glance.
 - **Normal and Focus modes** — Normal shows your full ranked list; Focus narrows it to your top N.
 - **Dwell-time gating** — visits only count after a configurable minimum open time (default 30 s), so quick flick-throughs don't inflate scores.
 - **Folder scope** — restrict tracking to specific folders, or exclude folders like `Templates/` or `Archive/`.

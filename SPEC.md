@@ -42,7 +42,10 @@ For each note:
 
 ## Runtime behavior
 
-- Registers a right-sidebar view and renders rows with width/opacity based on glow score.
+- Registers a right-sidebar view and renders rows as embers via three per-row CSS channels:
+  - `--glow-intensity` — glow score min-max stretched across the *visible* list (presence/aura). Raw scores rank; stretched scores paint.
+  - `--glow-warmth` — recency tone-mapped from exp-decay back to log-age (`1 - ln(1 + age/τ)/ln(31)`), so color temperature cools legibly across ~30τ instead of collapsing at ~2τ. Rows with warmth ≥ 0.7 get the `is-hot` class: a discrete ignition flip to a white-gold ground with dark text (a smooth crossover would have a warmth where text matches background).
+  - `--glow-freq` — raw frequency component (row width, floored at 42% for label legibility).
 - Supports view-local toggle:
   - **Normal**: all notes (optionally filter very low glow)
   - **Focus**: top `focusTopN`

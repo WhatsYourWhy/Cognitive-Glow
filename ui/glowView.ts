@@ -47,6 +47,7 @@ export class GlowView extends ItemView {
     const { getRecords, getSettings } = this.options;
     const container = this.contentEl;
     container.empty();
+    container.addClass("cognitive-glow-panel");
 
     const settings = getSettings();
 
@@ -117,8 +118,31 @@ export class GlowView extends ItemView {
       return;
     }
 
-    records.forEach((record) => {
-      const glowScore = Math.min(1, Math.max(0, record.glowScore));
+    // Tonal range: stretch scores across the *visible* list so the top note
+    // burns and the bottom note is an ember, even when raw scores cluster.
+    // Raw scores rank the list; stretched scores paint it.
+    const scores = records.map((r) => Math.min(1, Math.max(0, r.glowScore)));
+    const minScore = Math.min(...scores);
+    const maxScore = Math.max(...scores);
+    const range = maxScore - minScore;
+
+    records.forEach((record, i) => {
+      const glowScore = scores[i];
+      // When every visible score is (near-)equal there is no hierarchy to
+      // show, so everything renders at full heat rather than arbitrary rank.
+      const intensity = range > 1e-6 ? (glowScore - minScore) / range : 1;
+      // Warmth follows physical age, not relative rank — but tone-mapped.
+      // Raw recency is exp(-age/tau), which collapses everything older
+      // than ~2·tau into indistinguishable gray. Recover age in tau-units
+      // and cool on a log scale instead, so the amber midtones stretch
+      // across weeks: fresh ≈ 1, 1·tau ≈ 0.8, 10·tau ≈ 0.3, 30·tau → 0.
+      const recency = Math.min(1, Math.max(0, record.recency));
+      let warmth = 0;
+      if (recency > 0) {
+        const ageInTau = -Math.log(recency);
+        warmth = Math.max(0, 1 - Math.log(1 + ageInTau) / Math.log(31));
+      }
+      const frequency = Math.min(1, Math.max(0, record.frequency));
 
       // Extract display name: filename without .md extension
       const parts = record.path.split("/");
@@ -128,9 +152,16 @@ export class GlowView extends ItemView {
         : filename;
 
       const row = list.createDiv({ cls: "cognitive-glow-row" });
-      // Drive width/opacity/glow from a single CSS custom property so all
-      // styling lives in styles.css (per Obsidian styling guidance).
-      row.style.setProperty("--glow-score", glowScore.toFixed(3));
+      // Three perceptual channels, all consumed by styles.css (per Obsidian
+      // styling guidance): intensity → presence/glow, warmth → color
+      // temperature, frequency → row width.
+      row.style.setProperty("--glow-intensity", intensity.toFixed(3));
+      row.style.setProperty("--glow-warmth", warmth.toFixed(3));
+      row.style.setProperty("--glow-freq", frequency.toFixed(3));
+      // Ignition is discrete, not a fade: a smooth light↔dark text
+      // crossover always has a warmth where text matches the background.
+      // Hot rows flip to a white-gold ground with dark text in one step.
+      row.toggleClass("is-hot", warmth >= 0.7);
       row.setAttr("title", record.path);
       row.addEventListener("click", () => {
         this.app.workspace
