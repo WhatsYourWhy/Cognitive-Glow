@@ -79,6 +79,109 @@ export function ensureStatsIndex(
   };
 }
 
+interface NumberRule {
+  min?: number;
+  max?: number;
+  integer?: boolean;
+}
+
+function sanitizeNumber(
+  value: unknown,
+  fallback: number,
+  rule: NumberRule = {},
+): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback;
+  }
+  let result = rule.integer ? Math.round(value) : value;
+  if (rule.min !== undefined && result < rule.min) {
+    result = rule.min;
+  }
+  if (rule.max !== undefined && result > rule.max) {
+    result = rule.max;
+  }
+  return result;
+}
+
+function sanitizeFolderList(value: unknown, fallback: string[]): string[] {
+  if (!Array.isArray(value)) {
+    return [...fallback];
+  }
+  return value
+    .filter((entry): entry is string => typeof entry === "string")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Rebuild a GlowConfig from untrusted persisted data (data.json can be
+ * hand-edited or written by an older plugin version). Each field keeps the
+ * stored value only when it has the right type, clamped into its valid
+ * range; anything else falls back to the default. Unknown keys are dropped
+ * by construction, and array fields are copied so the result never aliases
+ * the defaults object.
+ */
+export function sanitizeSettings(
+  raw: unknown,
+  defaultSettings: GlowConfig,
+): GlowConfig {
+  const data = isRecord(raw) ? raw : {};
+  return {
+    tauRecencyMs: sanitizeNumber(
+      data.tauRecencyMs,
+      defaultSettings.tauRecencyMs,
+      { min: 1 },
+    ),
+    hitCountMaxScale: sanitizeNumber(
+      data.hitCountMaxScale,
+      defaultSettings.hitCountMaxScale,
+      { min: 1, integer: true },
+    ),
+    weightRecency: sanitizeNumber(
+      data.weightRecency,
+      defaultSettings.weightRecency,
+      { min: 0, max: 1 },
+    ),
+    weightFrequency: sanitizeNumber(
+      data.weightFrequency,
+      defaultSettings.weightFrequency,
+      { min: 0, max: 1 },
+    ),
+    weightGravity: sanitizeNumber(
+      data.weightGravity,
+      defaultSettings.weightGravity,
+      { min: 0, max: 1 },
+    ),
+    focusTopN: sanitizeNumber(data.focusTopN, defaultSettings.focusTopN, {
+      min: 1,
+      integer: true,
+    }),
+    showArchived:
+      typeof data.showArchived === "boolean"
+        ? data.showArchived
+        : defaultSettings.showArchived,
+    maxRecords: sanitizeNumber(data.maxRecords, defaultSettings.maxRecords, {
+      min: 0,
+      integer: true,
+    }),
+    sidebarSide:
+      data.sidebarSide === "left" || data.sidebarSide === "right"
+        ? data.sidebarSide
+        : defaultSettings.sidebarSide,
+    minDwellMs: sanitizeNumber(data.minDwellMs, defaultSettings.minDwellMs, {
+      min: 0,
+    }),
+    includedFolders: sanitizeFolderList(
+      data.includedFolders,
+      defaultSettings.includedFolders,
+    ),
+    excludedFolders: sanitizeFolderList(
+      data.excludedFolders,
+      defaultSettings.excludedFolders,
+    ),
+  };
+}
+
 function migrateFromStatsIndex(
   stats: StatsIndex,
   defaultSettings: GlowConfig,
@@ -86,7 +189,9 @@ function migrateFromStatsIndex(
   return {
     version: CURRENT_VERSION,
     stats,
-    settings: { ...defaultSettings },
+    // No persisted settings exist in the legacy shape; sanitizing the empty
+    // input yields a detached copy of the defaults.
+    settings: sanitizeSettings(undefined, defaultSettings),
   };
 }
 
@@ -102,10 +207,7 @@ export function ensurePersistedData(
     fallbackMtimeForPath,
     now,
   );
-  const settings = {
-    ...defaultSettings,
-    ...(isRecord(data.settings) ? data.settings : {}),
-  };
+  const settings = sanitizeSettings(data.settings, defaultSettings);
   const version =
     typeof data.version === "number" ? data.version : CURRENT_VERSION;
   return {

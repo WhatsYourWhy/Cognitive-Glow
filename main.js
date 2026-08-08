@@ -140,11 +140,83 @@ function ensureStatsIndex(raw, fallbackMtimeForPath, now = Date.now()) {
     notes: normalizedNotes
   };
 }
+function sanitizeNumber(value, fallback, rule = {}) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback;
+  }
+  let result = rule.integer ? Math.round(value) : value;
+  if (rule.min !== void 0 && result < rule.min) {
+    result = rule.min;
+  }
+  if (rule.max !== void 0 && result > rule.max) {
+    result = rule.max;
+  }
+  return result;
+}
+function sanitizeFolderList(value, fallback) {
+  if (!Array.isArray(value)) {
+    return [...fallback];
+  }
+  return value.filter((entry) => typeof entry === "string").map((entry) => entry.trim()).filter(Boolean);
+}
+function sanitizeSettings(raw, defaultSettings) {
+  const data = isRecord(raw) ? raw : {};
+  return {
+    tauRecencyMs: sanitizeNumber(
+      data.tauRecencyMs,
+      defaultSettings.tauRecencyMs,
+      { min: 1 }
+    ),
+    hitCountMaxScale: sanitizeNumber(
+      data.hitCountMaxScale,
+      defaultSettings.hitCountMaxScale,
+      { min: 1, integer: true }
+    ),
+    weightRecency: sanitizeNumber(
+      data.weightRecency,
+      defaultSettings.weightRecency,
+      { min: 0, max: 1 }
+    ),
+    weightFrequency: sanitizeNumber(
+      data.weightFrequency,
+      defaultSettings.weightFrequency,
+      { min: 0, max: 1 }
+    ),
+    weightGravity: sanitizeNumber(
+      data.weightGravity,
+      defaultSettings.weightGravity,
+      { min: 0, max: 1 }
+    ),
+    focusTopN: sanitizeNumber(data.focusTopN, defaultSettings.focusTopN, {
+      min: 1,
+      integer: true
+    }),
+    showArchived: typeof data.showArchived === "boolean" ? data.showArchived : defaultSettings.showArchived,
+    maxRecords: sanitizeNumber(data.maxRecords, defaultSettings.maxRecords, {
+      min: 0,
+      integer: true
+    }),
+    sidebarSide: data.sidebarSide === "left" || data.sidebarSide === "right" ? data.sidebarSide : defaultSettings.sidebarSide,
+    minDwellMs: sanitizeNumber(data.minDwellMs, defaultSettings.minDwellMs, {
+      min: 0
+    }),
+    includedFolders: sanitizeFolderList(
+      data.includedFolders,
+      defaultSettings.includedFolders
+    ),
+    excludedFolders: sanitizeFolderList(
+      data.excludedFolders,
+      defaultSettings.excludedFolders
+    )
+  };
+}
 function migrateFromStatsIndex(stats, defaultSettings) {
   return {
     version: CURRENT_VERSION,
     stats,
-    settings: { ...defaultSettings }
+    // No persisted settings exist in the legacy shape; sanitizing the empty
+    // input yields a detached copy of the defaults.
+    settings: sanitizeSettings(void 0, defaultSettings)
   };
 }
 function ensurePersistedData(raw, defaultSettings, fallbackMtimeForPath, now = Date.now()) {
@@ -155,10 +227,7 @@ function ensurePersistedData(raw, defaultSettings, fallbackMtimeForPath, now = D
     fallbackMtimeForPath,
     now
   );
-  const settings = {
-    ...defaultSettings,
-    ...isRecord(data.settings) ? data.settings : {}
-  };
+  const settings = sanitizeSettings(data.settings, defaultSettings);
   const version = typeof data.version === "number" ? data.version : CURRENT_VERSION;
   return {
     version,
