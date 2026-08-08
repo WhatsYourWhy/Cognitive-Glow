@@ -105,7 +105,7 @@ export function ensurePersistedData(
   const settings = {
     ...defaultSettings,
     ...(isRecord(data.settings) ? data.settings : {}),
-  } as GlowConfig;
+  };
   const version =
     typeof data.version === "number" ? data.version : CURRENT_VERSION;
   return {
