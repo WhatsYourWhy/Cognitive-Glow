@@ -329,6 +329,9 @@ var CognitiveGlowPlugin = class extends import_obsidian2.Plugin {
   constructor() {
     super(...arguments);
     this.stats = { version: CURRENT_VERSION, notes: {} };
+    // Public typed override of Plugin.settings (added in Obsidian 1.13.0);
+    // the base class declares it `settings?: unknown` and the settings
+    // framework reads it by convention. Mutate via updateSettings() only.
     this.settings = { ...DEFAULT_SETTINGS };
     this.saveTimeout = null;
     this.pendingOpen = null;
@@ -685,160 +688,393 @@ var PersistedDataModal = class extends import_obsidian2.Modal {
     pre.textContent = this.serializedData;
   }
 };
+var DECAY_PRESETS = {
+  "86400000": "1 day",
+  "259200000": "3 days",
+  "604800000": "1 week",
+  "2592000000": "1 month"
+};
+function toFiniteNumber(value, fallback) {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+function clamp01(value) {
+  return Math.min(1, Math.max(0, value));
+}
+function parseFolderList(value) {
+  if (typeof value !== "string") {
+    return [];
+  }
+  return value.split("\n").map((s) => s.trim()).filter(Boolean);
+}
 var CognitiveGlowSettingTab = class extends import_obsidian2.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
+  getSettingDefinitions() {
+    return this.buildSettingDefinitions();
+  }
+  getControlValue(key) {
+    const settings = this.plugin.getSettings();
+    switch (key) {
+      case "tauRecencyPreset":
+        return String(settings.tauRecencyMs) in DECAY_PRESETS ? String(settings.tauRecencyMs) : "custom";
+      case "focusTopN":
+        return settings.focusTopN;
+      case "hideFaded":
+        return !settings.showArchived;
+      case "sidebarSide":
+        return settings.sidebarSide;
+      case "minDwellSeconds":
+        return settings.minDwellMs / 1e3;
+      case "includedFoldersText":
+        return settings.includedFolders.join("\n");
+      case "excludedFoldersText":
+        return settings.excludedFolders.join("\n");
+      case "weightRecency":
+        return settings.weightRecency;
+      case "weightFrequency":
+        return settings.weightFrequency;
+      case "weightGravity":
+        return settings.weightGravity;
+      case "hitCountMaxScale":
+        return settings.hitCountMaxScale;
+      case "maxRecords":
+        return settings.maxRecords;
+      case "tauRecencyMs":
+        return settings.tauRecencyMs;
+      default:
+        return void 0;
+    }
+  }
+  async setControlValue(key, value) {
+    await this.plugin.updateSettings((next) => {
+      switch (key) {
+        case "tauRecencyPreset":
+          if (typeof value === "string" && value in DECAY_PRESETS) {
+            next.tauRecencyMs = Number(value);
+          }
+          break;
+        case "focusTopN":
+          next.focusTopN = Math.max(
+            1,
+            Math.round(toFiniteNumber(value, DEFAULT_SETTINGS.focusTopN))
+          );
+          break;
+        case "hideFaded":
+          next.showArchived = value !== true;
+          break;
+        case "sidebarSide":
+          next.sidebarSide = value === "left" ? "left" : "right";
+          break;
+        case "minDwellSeconds":
+          next.minDwellMs = Math.max(
+            0,
+            Math.round(
+              toFiniteNumber(value, DEFAULT_SETTINGS.minDwellMs / 1e3) * 1e3
+            )
+          );
+          break;
+        case "includedFoldersText":
+          next.includedFolders = parseFolderList(value);
+          break;
+        case "excludedFoldersText":
+          next.excludedFolders = parseFolderList(value);
+          break;
+        case "weightRecency":
+          next.weightRecency = clamp01(
+            toFiniteNumber(value, DEFAULT_SETTINGS.weightRecency)
+          );
+          break;
+        case "weightFrequency":
+          next.weightFrequency = clamp01(
+            toFiniteNumber(value, DEFAULT_SETTINGS.weightFrequency)
+          );
+          break;
+        case "weightGravity":
+          next.weightGravity = clamp01(
+            toFiniteNumber(value, DEFAULT_SETTINGS.weightGravity)
+          );
+          break;
+        case "hitCountMaxScale":
+          next.hitCountMaxScale = Math.max(
+            1,
+            Math.round(toFiniteNumber(value, DEFAULT_SETTINGS.hitCountMaxScale))
+          );
+          break;
+        case "maxRecords":
+          next.maxRecords = Math.max(
+            0,
+            Math.round(toFiniteNumber(value, DEFAULT_SETTINGS.maxRecords))
+          );
+          break;
+        case "tauRecencyMs":
+          next.tauRecencyMs = Math.max(
+            1,
+            toFiniteNumber(value, DEFAULT_SETTINGS.tauRecencyMs)
+          );
+          break;
+        default:
+          break;
+      }
+    });
+  }
+  buildSettingDefinitions() {
+    return [
+      {
+        type: "group",
+        heading: "Display",
+        items: [
+          {
+            name: "Glow fades after",
+            desc: "How quickly a note loses its glow when you stop visiting it.",
+            control: {
+              type: "dropdown",
+              key: "tauRecencyPreset",
+              options: { ...DECAY_PRESETS, custom: "Custom (see advanced)" }
+            }
+          },
+          {
+            name: "Max notes in focus mode",
+            desc: "How many top-glowing notes appear in focus mode.",
+            control: {
+              type: "number",
+              key: "focusTopN",
+              placeholder: "5",
+              defaultValue: DEFAULT_SETTINGS.focusTopN,
+              min: 1,
+              step: 1
+            }
+          },
+          {
+            name: "Hide faded notes",
+            desc: "Only show notes with a meaningful glow score.",
+            control: { type: "toggle", key: "hideFaded", defaultValue: false }
+          },
+          {
+            name: "Sidebar placement",
+            desc: "Which sidebar to open the glow panel in. Takes effect immediately.",
+            control: {
+              type: "dropdown",
+              key: "sidebarSide",
+              options: { right: "Right (default)", left: "Left" }
+            }
+          }
+        ]
+      },
+      {
+        type: "group",
+        heading: "Tracking",
+        items: [
+          {
+            name: "Minimum open time (seconds)",
+            desc: "A note must stay open this long before it counts as a visit. Prevents quick flick-throughs from inflating scores. Set to 0 to count every open instantly.",
+            control: {
+              type: "number",
+              key: "minDwellSeconds",
+              placeholder: "30",
+              defaultValue: DEFAULT_SETTINGS.minDwellMs / 1e3,
+              min: 0,
+              step: "any"
+            }
+          },
+          {
+            name: "Tracked folders",
+            desc: "Only track notes in these folders (one folder path per line). Leave blank to track your entire vault.",
+            control: {
+              type: "textarea",
+              key: "includedFoldersText",
+              placeholder: "Projects/\ndaily/",
+              rows: 4
+            }
+          },
+          {
+            name: "Excluded folders",
+            desc: "Never track notes in these folders (one folder path per line).",
+            control: {
+              type: "textarea",
+              key: "excludedFoldersText",
+              placeholder: "Templates/\narchive/",
+              rows: 4
+            }
+          }
+        ]
+      },
+      {
+        type: "page",
+        name: "Advanced",
+        desc: "Scoring weights and raw tuning constants.",
+        items: [
+          {
+            name: "Recency weight",
+            desc: "How much recent activity contributes to the glow score (0\u20131). Weights are normalized automatically if their sum exceeds 1.",
+            control: {
+              type: "number",
+              key: "weightRecency",
+              placeholder: "0.6",
+              defaultValue: DEFAULT_SETTINGS.weightRecency,
+              min: 0,
+              max: 1,
+              step: "any"
+            }
+          },
+          {
+            name: "Frequency weight",
+            desc: "How much visit frequency contributes to the glow score (0\u20131).",
+            control: {
+              type: "number",
+              key: "weightFrequency",
+              placeholder: "0.4",
+              defaultValue: DEFAULT_SETTINGS.weightFrequency,
+              min: 0,
+              max: 1,
+              step: "any"
+            }
+          },
+          {
+            name: "Manual pin weight",
+            desc: "How much manually pinned notes are boosted in the score (0\u20131). Pin a note via setManualGravity in the API.",
+            control: {
+              type: "number",
+              key: "weightGravity",
+              placeholder: "0",
+              defaultValue: DEFAULT_SETTINGS.weightGravity,
+              min: 0,
+              max: 1,
+              step: "any"
+            }
+          },
+          {
+            name: "Frequency scale",
+            desc: "The number of opens considered 'maximum frequency' for scoring. Higher values make frequent opens matter less at the top end.",
+            control: {
+              type: "number",
+              key: "hitCountMaxScale",
+              placeholder: "20",
+              defaultValue: DEFAULT_SETTINGS.hitCountMaxScale,
+              min: 1,
+              step: 1
+            }
+          },
+          {
+            name: "Max tracked notes",
+            desc: "Cap on how many notes are kept in memory. 0 = no cap.",
+            control: {
+              type: "number",
+              key: "maxRecords",
+              placeholder: "3000",
+              defaultValue: DEFAULT_SETTINGS.maxRecords,
+              min: 0,
+              step: 1
+            }
+          },
+          {
+            name: "Recency decay (ms)",
+            desc: "Raw time constant for the exponential recency decay in milliseconds. Overrides the 'Glow fades after' dropdown.",
+            control: {
+              type: "number",
+              key: "tauRecencyMs",
+              placeholder: "259200000",
+              defaultValue: DEFAULT_SETTINGS.tauRecencyMs,
+              min: 1,
+              step: "any"
+            }
+          }
+        ]
+      }
+    ];
+  }
+  /**
+   * Fallback renderer for Obsidian < 1.13.0, which never calls
+   * getSettingDefinitions(). Newer versions render the definitions
+   * declaratively and skip display() entirely. Both paths are driven by
+   * buildSettingDefinitions(), so they cannot drift apart.
+   */
   display() {
+    var _a, _b;
     const { containerEl } = this;
     containerEl.empty();
-    const settings = this.plugin.getSettings();
-    new import_obsidian2.Setting(containerEl).setName("Display").setHeading();
-    const decayPresets = {
-      "86400000": "1 day",
-      "259200000": "3 days",
-      "604800000": "1 week",
-      "2592000000": "1 month"
-    };
-    new import_obsidian2.Setting(containerEl).setName("Glow fades after").setDesc(
-      "How quickly a note loses its glow when you stop visiting it."
-    ).addDropdown((drop) => {
-      for (const [val, label] of Object.entries(decayPresets)) {
-        drop.addOption(val, label);
+    for (const item of this.buildSettingDefinitions()) {
+      if (!("type" in item)) {
+        this.renderLegacySetting(containerEl, item);
+        continue;
       }
-      drop.addOption("custom", "Custom (see advanced)");
-      const isPreset = String(settings.tauRecencyMs) in decayPresets;
-      drop.setValue(
-        isPreset ? String(settings.tauRecencyMs) : "custom"
-      );
-      drop.onChange(async (value) => {
-        if (value !== "custom") {
-          await this.plugin.updateSettings((next) => {
-            next.tauRecencyMs = Number(value);
-          });
+      if (item.type === "page") {
+        const details = containerEl.createEl("details", {
+          cls: "cognitive-glow-advanced-section"
+        });
+        details.createEl("summary", {
+          text: item.name,
+          cls: "cognitive-glow-advanced-summary"
+        });
+        for (const child of (_a = item.items) != null ? _a : []) {
+          this.renderLegacySetting(details, child);
         }
-      });
-    });
-    new import_obsidian2.Setting(containerEl).setName("Max notes in focus mode").setDesc("How many top-glowing notes appear in focus mode.").addText(
-      (text) => text.setPlaceholder("5").setValue(String(settings.focusTopN)).onChange(async (value) => {
-        const n = Number.parseInt(value, 10);
-        await this.plugin.updateSettings((next) => {
-          next.focusTopN = Number.isNaN(n) ? 5 : Math.max(1, n);
+      } else {
+        if (item.heading !== void 0) {
+          new import_obsidian2.Setting(containerEl).setName(item.heading).setHeading();
+        }
+        for (const child of (_b = item.items) != null ? _b : []) {
+          this.renderLegacySetting(containerEl, child);
+        }
+      }
+    }
+  }
+  renderLegacySetting(containerEl, def) {
+    if (!("control" in def) || def.control === void 0) {
+      return;
+    }
+    const control = def.control;
+    const setting = new import_obsidian2.Setting(containerEl).setName(def.name);
+    if (typeof def.desc === "string") {
+      setting.setDesc(def.desc);
+    }
+    switch (control.type) {
+      case "toggle":
+        setting.addToggle(
+          (toggle) => toggle.setValue(this.getControlValue(control.key) === true).onChange(async (value) => {
+            await this.setControlValue(control.key, value);
+          })
+        );
+        break;
+      case "dropdown":
+        setting.addDropdown((drop) => {
+          for (const [optionValue, label] of Object.entries(control.options)) {
+            drop.addOption(optionValue, label);
+          }
+          const current = this.getControlValue(control.key);
+          drop.setValue(typeof current === "string" ? current : "");
+          drop.onChange(async (value) => {
+            await this.setControlValue(control.key, value);
+          });
         });
-      })
-    );
-    new import_obsidian2.Setting(containerEl).setName("Hide faded notes").setDesc("Only show notes with a meaningful glow score.").addToggle(
-      (toggle) => toggle.setValue(!settings.showArchived).onChange(async (value) => {
-        await this.plugin.updateSettings((next) => {
-          next.showArchived = !value;
+        break;
+      case "number":
+        setting.addText((text) => {
+          var _a;
+          const current = this.getControlValue(control.key);
+          text.setPlaceholder((_a = control.placeholder) != null ? _a : "").setValue(typeof current === "number" ? String(current) : "").onChange(async (value) => {
+            await this.setControlValue(
+              control.key,
+              Number.parseFloat(value)
+            );
+          });
         });
-      })
-    );
-    new import_obsidian2.Setting(containerEl).setName("Sidebar placement").setDesc(
-      "Which sidebar to open the glow panel in. Takes effect immediately."
-    ).addDropdown(
-      (drop) => drop.addOption("right", "Right (default)").addOption("left", "Left").setValue(settings.sidebarSide).onChange(async (value) => {
-        await this.plugin.updateSettings((next) => {
-          next.sidebarSide = value;
+        break;
+      case "textarea":
+        setting.addTextArea((area) => {
+          var _a;
+          const current = this.getControlValue(control.key);
+          area.setPlaceholder((_a = control.placeholder) != null ? _a : "").setValue(typeof current === "string" ? current : "").onChange(async (value) => {
+            await this.setControlValue(control.key, value);
+          });
+          if (control.rows !== void 0) {
+            area.inputEl.rows = control.rows;
+          }
         });
-      })
-    );
-    new import_obsidian2.Setting(containerEl).setName("Tracking").setHeading();
-    new import_obsidian2.Setting(containerEl).setName("Minimum open time (seconds)").setDesc(
-      "A note must stay open this long before it counts as a visit. Prevents quick flick-throughs from inflating scores. Set to 0 to count every open instantly."
-    ).addText(
-      (text) => text.setPlaceholder("30").setValue(String(settings.minDwellMs / 1e3)).onChange(async (value) => {
-        const parsed = Number.parseFloat(value);
-        await this.plugin.updateSettings((next) => {
-          next.minDwellMs = Number.isNaN(parsed) ? 3e4 : Math.max(0, Math.round(parsed * 1e3));
-        });
-      })
-    );
-    new import_obsidian2.Setting(containerEl).setName("Tracked folders").setDesc(
-      "Only track notes in these folders (one folder path per line). Leave blank to track your entire vault."
-    ).addTextArea((area) => {
-      area.setPlaceholder("Projects/\ndaily/").setValue(settings.includedFolders.join("\n")).onChange(async (value) => {
-        await this.plugin.updateSettings((next) => {
-          next.includedFolders = value.split("\n").map((s) => s.trim()).filter(Boolean);
-        });
-      });
-      area.inputEl.rows = 4;
-    });
-    new import_obsidian2.Setting(containerEl).setName("Excluded folders").setDesc(
-      "Never track notes in these folders (one folder path per line)."
-    ).addTextArea((area) => {
-      area.setPlaceholder("Templates/\narchive/").setValue(settings.excludedFolders.join("\n")).onChange(async (value) => {
-        await this.plugin.updateSettings((next) => {
-          next.excludedFolders = value.split("\n").map((s) => s.trim()).filter(Boolean);
-        });
-      });
-      area.inputEl.rows = 4;
-    });
-    const details = containerEl.createEl("details", {
-      cls: "cognitive-glow-advanced-section"
-    });
-    details.createEl("summary", {
-      text: "Advanced",
-      cls: "cognitive-glow-advanced-summary"
-    });
-    new import_obsidian2.Setting(details).setName("Recency weight").setDesc(
-      "How much recent activity contributes to the glow score (0\u20131). Weights are normalized automatically if their sum exceeds 1."
-    ).addText(
-      (text) => text.setPlaceholder("0.6").setValue(String(settings.weightRecency)).onChange(async (value) => {
-        const v = Number.parseFloat(value);
-        await this.plugin.updateSettings((next) => {
-          next.weightRecency = Number.isNaN(v) ? 0.6 : Math.min(1, Math.max(0, v));
-        });
-      })
-    );
-    new import_obsidian2.Setting(details).setName("Frequency weight").setDesc("How much visit frequency contributes to the glow score (0\u20131).").addText(
-      (text) => text.setPlaceholder("0.4").setValue(String(settings.weightFrequency)).onChange(async (value) => {
-        const v = Number.parseFloat(value);
-        await this.plugin.updateSettings((next) => {
-          next.weightFrequency = Number.isNaN(v) ? 0.4 : Math.min(1, Math.max(0, v));
-        });
-      })
-    );
-    new import_obsidian2.Setting(details).setName("Manual pin weight").setDesc(
-      "How much manually pinned notes are boosted in the score (0\u20131). Pin a note via setManualGravity in the API."
-    ).addText(
-      (text) => text.setPlaceholder("0").setValue(String(settings.weightGravity)).onChange(async (value) => {
-        const v = Number.parseFloat(value);
-        await this.plugin.updateSettings((next) => {
-          next.weightGravity = Number.isNaN(v) ? 0 : Math.min(1, Math.max(0, v));
-        });
-      })
-    );
-    new import_obsidian2.Setting(details).setName("Frequency scale").setDesc(
-      "The number of opens considered 'maximum frequency' for scoring. Higher values make frequent opens matter less at the top end."
-    ).addText(
-      (text) => text.setPlaceholder("20").setValue(String(settings.hitCountMaxScale)).onChange(async (value) => {
-        const v = Number.parseInt(value, 10);
-        await this.plugin.updateSettings((next) => {
-          next.hitCountMaxScale = Number.isNaN(v) ? 20 : Math.max(1, v);
-        });
-      })
-    );
-    new import_obsidian2.Setting(details).setName("Max tracked notes").setDesc(
-      "Cap on how many notes are kept in memory. 0 = no cap."
-    ).addText(
-      (text) => text.setPlaceholder("3000").setValue(String(settings.maxRecords)).onChange(async (value) => {
-        const v = Number.parseInt(value, 10);
-        await this.plugin.updateSettings((next) => {
-          next.maxRecords = Number.isNaN(v) ? 3e3 : Math.max(0, v);
-        });
-      })
-    );
-    new import_obsidian2.Setting(details).setName("Recency decay (ms)").setDesc(
-      "Raw time constant for the exponential recency decay in milliseconds. Overrides the 'Glow fades after' dropdown."
-    ).addText(
-      (text) => text.setPlaceholder("259200000").setValue(String(settings.tauRecencyMs)).onChange(async (value) => {
-        const v = Number.parseFloat(value);
-        await this.plugin.updateSettings((next) => {
-          next.tauRecencyMs = Number.isNaN(v) ? 2592e5 : Math.max(1, v);
-        });
-      })
-    );
+        break;
+      default:
+        break;
+    }
   }
 };
