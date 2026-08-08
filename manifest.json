@@ -1,7 +1,7 @@
 {
   "id": "cognitive-glow",
   "name": "Cognitive Glow",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "minAppVersion": "1.7.2",
   "description": "Note activity heatmap in a sidebar. Navigate your vault by visual glow instead of hunting filenames.",
   "author": "Justin Shank",
