@@ -53,10 +53,12 @@ test("computeGlowScore matches the expected formula", () => {
 });
 
 test("computeGlowScore uses fallback mtime when lastOpened is missing", () => {
-  const stats: NoteStats = {
+  // Deliberately degraded record: store.ts guarantees lastOpened post-sanitize,
+  // so the cast is what lets us reach the SPEC 3.2 mtime-fallback branch.
+  const stats = {
     path: "notes/fallback.md",
     hitCount: 1,
-  };
+  } as NoteStats;
   const fallbackMtime = now - 2 * 24 * 60 * 60 * 1000;
 
   const expected = expectedGlowScore(stats, fallbackMtime);

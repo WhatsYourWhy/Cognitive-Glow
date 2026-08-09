@@ -3,7 +3,11 @@
   "compilerOptions": {
     "types": [
       "node"
-    ]
+    ],
+    // Tests import with explicit .ts extensions so ts-node/ESM can resolve them
+    // at runtime; this makes `tsc --noEmit` accept the same paths.
+    "allowImportingTsExtensions": true,
+    "noEmit": true
   },
   "include": [
     "core/**/*.ts",

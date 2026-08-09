@@ -6,7 +6,10 @@ visual glow instead of hunting filenames.
 - **Repo:** https://github.com/WhatsYourWhy/Cognitive-Glow
 - **Build:** `npm run build` (esbuild → `main.js` at repo root)
 - **Lint:** `npm run lint` (must pass clean before any release)
+- **Typecheck:** `npm run typecheck` — esbuild strips types WITHOUT checking them,
+  so this is the only gate that catches a type error. Covers both tsconfigs.
 - **Test:** `npm test`
+- **Version sync:** `npm run check:versions` (see Release process below)
 
 ## Release process — DO NOT bypass the workflow
 
@@ -14,8 +17,14 @@ Releases ship via `.github/workflows/release.yml`. The workflow builds, signs
 the artifacts with GitHub artifact attestations, and uploads `main.js`,
 `styles.css`, and `manifest.json` to the release.
 
-The release workflow runs `lint` + `test` before `build`, so a broken commit
-cannot ship. CI also runs on push-to-main as a second gate.
+The release workflow runs `check:versions` + `lint` + `typecheck` + `test` before
+`build`, so a broken commit cannot ship. CI also runs on push-to-main as a second
+gate.
+
+Steps 1, 2 and 4 below are enforced by `scripts/check-version-sync.mjs`, which
+runs in CI (without the tag check) and as the FIRST release step, before
+`npm ci` — so a mistyped tag fails in seconds. It is a guard, not a substitute:
+you still have to do the bumps.
 
 To cut a release:
 
