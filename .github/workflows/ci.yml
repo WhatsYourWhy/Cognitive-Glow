@@ -18,7 +18,13 @@ jobs:
         with:
           node-version: 20
           cache: npm
+      # Catches a mis-bump (manifest/package drift, missing versions.json entry)
+      # at PR time rather than at tag-push time.
+      - run: npm run check:versions
       - run: npm ci
       - run: npm run lint
+      # esbuild strips types without checking them, so build alone cannot catch
+      # a type error. This is the only gate that does.
+      - run: npm run typecheck
       - run: npm run build
       - run: npm test
