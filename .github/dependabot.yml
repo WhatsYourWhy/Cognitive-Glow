@@ -10,6 +10,19 @@ updates:
       # Group dev tooling bumps to reduce PR noise.
       dev-dependencies:
         dependency-type: "development"
+    ignore:
+      # eslint 10 is blocked by plugin peer ranges, not by preference:
+      #   @microsoft/eslint-plugin-sdl@1.1.0 (latest) peers eslint@^9
+      #   eslint-plugin-obsidianmd peers @eslint/js@^9.30.1
+      # Revisit when both plugins publish eslint 10 support.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@eslint/js"
+        update-types: ["version-update:semver-major"]
+      # typescript 6+ is blocked by typescript-eslint@8, which peers
+      # typescript ">=4.8.4 <6.1.0".
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   # Keep GitHub Actions versions current — important for the signed-release
   # supply chain (actions/checkout, attest-build-provenance, action-gh-release).
