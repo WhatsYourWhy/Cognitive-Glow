@@ -12,7 +12,7 @@
     "test": "cross-env TS_NODE_PROJECT=tsconfig.test.json TS_NODE_TRANSPILE_ONLY=1 node --test --loader ts-node/esm tests/glow-score.test.ts tests/store-sanitize.test.ts"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.4",
+    "@eslint/js": "^9.39.5",
     "@microsoft/eslint-plugin-sdl": "^1.1.0",
     "cross-env": "^10.1.0",
     "esbuild": "^0.28.2",
@@ -22,7 +22,7 @@
     "obsidian": "^1.13.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5",
-    "typescript-eslint": "^8.57.1"
+    "typescript-eslint": "^8.69.0"
   },
   "overrides": {
     "brace-expansion": "^5.0.9"
