@@ -126,4 +126,17 @@ export default [
       "@typescript-eslint/no-unused-expressions": "off",
     },
   },
+  {
+    // Repo tooling (release / version-sync scripts) runs under Node, not
+    // Obsidian, so it gets Node globals and none of the plugin rules.
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      sourceType: "module",
+      globals: {
+        console: "readonly",
+        process: "readonly",
+        URL: "readonly",
+      },
+    },
+  },
 ];
