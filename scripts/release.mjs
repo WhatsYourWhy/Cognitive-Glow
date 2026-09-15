@@ -130,10 +130,12 @@ const bumpFiles = [
   "versions.json",
 ];
 const artifactFiles = ["main.js", "styles.css"];
-const changed = git("status", "--porcelain")
-  .split("\n")
-  .filter(Boolean)
-  .map((line) => line.slice(3).trim());
+// Name-only listings: no status prefix to parse (and the helper's trim()
+// would eat the leading space of a porcelain " M file" line).
+const changed = [
+  ...git("diff", "--name-only", "HEAD").split("\n"),
+  ...git("ls-files", "--others", "--exclude-standard").split("\n"),
+].filter(Boolean);
 
 const unexpected = changed.filter(
   (file) => !bumpFiles.includes(file) && !artifactFiles.includes(file),
