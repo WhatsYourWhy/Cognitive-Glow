@@ -26,17 +26,31 @@ runs in CI (without the tag check) and as the FIRST release step, before
 `npm ci` — so a mistyped tag fails in seconds. It is a guard, not a substitute:
 you still have to do the bumps.
 
-To cut a release:
+To cut a release, run the release script. It performs every step below in
+one atomic local operation and refuses to tag an un-bumped or dirty tree:
+
+    npm run release -- X.Y.Z          # bump + verify + commit + tag; prints push commands
+    npm run release -- X.Y.Z --push   # ...and push main + tag; workflow fires
+
+What it does (only do these by hand if the script cannot run):
 
 1. Bump `version` in BOTH `manifest.json` AND `package.json` (must stay in sync).
 2. Add an entry to `versions.json` mapping the new version to its
    `minAppVersion` (e.g. `"0.3.0": "1.5.0"`). Required for Obsidian to install
    the correct version on users running older Obsidian releases. Do this even
    if `minAppVersion` hasn't changed — the file's history must be continuous.
-3. Commit: `git commit -m "chore: bump to X.Y.Z"` and push.
-4. Tag (NO `v` prefix — Obsidian convention): `git tag X.Y.Z`.
-5. Push tag: `git push origin X.Y.Z`. Workflow fires automatically.
-6. Verify after green: `gh attestation verify main.js -R WhatsYourWhy/Cognitive-Glow`.
+3. Run `check:versions`, `lint`, `typecheck`, `test`, `build` locally.
+4. Commit: `git commit -m "chore: bump to X.Y.Z"` and push.
+5. Tag (NO `v` prefix — Obsidian convention): `git tag X.Y.Z`.
+6. Push tag: `git push origin X.Y.Z`. Workflow fires automatically.
+7. Verify after green: `gh attestation verify main.js -R WhatsYourWhy/Cognitive-Glow`.
+
+**Never** create the release from GitHub's "Draft a new release" UI with a new
+tag. The UI creates the tag (and a published, empty release marked Latest)
+*before* the workflow's version guard runs. If the guard fails you are left
+with a live release that has no assets, and Obsidian's updater finds nothing
+to download. That is exactly what happened with 0.6.0 on 2026-09-15. Let
+`release.yml` create the release; it only does so after every gate passes.
 
 **Never** upload `main.js` / `styles.css` to a release by hand. That overwrites
 the attested artifacts and re-introduces the "no attestation" submission warning.
