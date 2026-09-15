@@ -79,8 +79,10 @@ if (git("status", "--porcelain") !== "") {
   fail("working tree is not clean; commit or stash first");
 }
 
-console.log("== fetching origin");
-git("fetch", "--quiet", "--tags", "origin", "main");
+// --prune-tags keeps local tags mirroring origin, so a tag deleted upstream
+// (e.g. after a failed release) cannot linger locally and block the retry.
+console.log("== fetching origin (pruning stale tags)");
+git("fetch", "--quiet", "--prune", "--prune-tags", "origin");
 try {
   git("merge-base", "--is-ancestor", "origin/main", "HEAD");
 } catch {
