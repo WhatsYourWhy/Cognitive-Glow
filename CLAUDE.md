@@ -58,6 +58,24 @@ the attested artifacts and re-introduces the "no attestation" submission warning
 The tag name MUST equal the `manifest.json` version exactly. Obsidian's plugin
 store matches them as strings.
 
+## Branch rules on `main` (GitHub rulesets, set 2026-09-18)
+
+- **Require CI on main:** the `build` check from `ci.yml` must be green before
+  a PR can merge. Not strict — PRs don't need to be up to date with `main`, so
+  stacked dependabot PRs don't need rebasing against each other.
+- **Admin bypass is intentional.** A required check also gates direct pushes,
+  and `npm run release -- X.Y.Z --push` pushes a brand-new bump commit to
+  `main` before CI has run on it. Repository admins bypass the rule so that
+  push succeeds; PR merges still show the check as required and need an
+  explicit "bypass rules" click to merge red. Don't remove the bypass without
+  switching releases to a PR-based flow.
+- **Restrict Deletes:** `main` cannot be deleted.
+- **Auto-delete head branches** is on. Merged PR branches vanish from origin
+  automatically; don't rely on them after merge.
+- Rulesets are repo settings, not code. Inspect them with
+  `gh api repos/WhatsYourWhy/Cognitive-Glow/rulesets` and the effective set
+  with `gh api repos/WhatsYourWhy/Cognitive-Glow/rules/branches/main`.
+
 ## Conventions
 
 - **ESLint plugin:** use `eslint-plugin-import-x` (NOT the deprecated
